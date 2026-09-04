@@ -18,22 +18,16 @@
 
 ## 3. 当前状态
 
-- 日期：2026-09-03
-- 本地工作区：已从用户指定仓库初始化。
-- 远程仓库：已建立 `main` 分支并包含初始化交接提交。
-- 已确定：项目服务于“软件工程学院小学期”的独立全栈作品要求；用户将先筛选参考项目的功能与设计。
-- 尚未确定：正式产品名称、必做功能、UI 方向、技术栈细节、版本计划、是否需要移动端交付。
+- 日期：2026-09-04
+- 本地工作区：已从用户指定仓库初始化；远程仓库 `main` 分支同步正常。
+- 已确定：项目服务于"软件工程学院小学期"的独立全栈作品要求。
+- 已完成：20 个参考项目 README 调研（19 个成功，`VIJAYAPANDIANT/smart-study-planner-reference` 404），结果与产品线提案见 [docs/reference-projects.md](docs/reference-projects.md)。
+- 已提出：聚焦功能线 = 课程资料上传 → RAG 可信问答（带出处）→ AI 测验 → 错题转闪卡（ts-fsrs 排程）→ 学习看板；明确砍掉多智能体课堂、LMS 集成、GPA 工具、教师端、付费墙。
+- 尚未确定：用户对产品线的确认/修改意见、正式产品名称、必做功能终版、UI 方向、技术栈细节、版本计划（V1/V1.5/V2 划分仅为提案）。
 
 ## 4. 参考项目（仅供调研）
 
-- `THU-MAIC/OpenMAIC`：材料驱动的互动课程、测验和学习活动。
-- `santanu2908/chat-with-pdf-rag`：带来源引用的 PDF 问答流程。
-- `Apyhtml20/PaperBrain`：资料问答、摘要、测验、闪卡与学习记录。
-- `Kashif-Mustari/Smart-Student-Success-Agent`：学习计划、测验与学习看板。
-- `zeeshanparwez/VidyaAI`：学习计划、测验和薄弱点分析。
-- `devesh-69/student-task-tracker`：作业任务与 AI 子任务拆解。
-- `shreyashankar/planner`：基于截止日期与可用时间的任务排程。
-- `vincentaayush/BoilerTrack`：课程、作业、待办和学习资源的界面组织。
+完整调研结果（含各仓库功能原文摘录、设计亮点、借鉴点）见 [docs/reference-projects.md](docs/reference-projects.md)。
 
 ## 5. 变更记录
 
@@ -47,15 +41,23 @@
 - 新建 `AGENTS.md`，集中保存用户确认的长期全局协作规范。
 - 本文档改为引用 `AGENTS.md`，后续仅维护项目状态与交接信息，避免规则重复和漂移。
 
+### 2026-09-04 — 完成参考项目调研并提出产品线
+
+- 通过并行子代理抓取 20 个参考仓库 README，整理功能、设计、用法与技术栈，落档 `docs/reference-projects.md`。
+- `VIJAYAPANDIANT/smart-study-planner-reference` 仓库 404（用户存在但无此仓库），待用户补充替代链接或确认剔除。
+- 提出聚焦产品线（资料 → 问答 → 测验 → 错题闪卡 → 看板）与 V1/V1.5/V2 版本划分建议，等待用户确认。
+
 ## 6. 下一步工作
 
-等待用户给出参考项目筛选结果和希望保留的功能。收到后：
+等待用户确认产品线提案（见 docs/reference-projects.md"产品线提案"一节）。收到确认后：
 
-1. 整理功能范围与用户故事；
-2. 与用户确认少量、有明确交付价值的版本计划；
-3. 设计信息架构、数据模型、技术方案和 UI 方向；
-4. 初始化项目并开始实现第一个已确认版本。
+1. 敲定正式产品名称、V1 必做功能终版、UI 方向与技术栈；
+2. 设计信息架构、数据模型（课程/资料/问答会话/测验/闪卡/复习记录）与 API 契约；
+3. 初始化前后端项目骨架（Vercel + Supabase + FastAPI 底座）；
+4. 按 V1 范围开始实现，优先打通"上传 → 问答"最小链路。
 
 ## 7. 待用户操作
 
-- 无。
+- 确认或修改产品线提案（聚焦功能范围、砍掉清单、V1 范围）。
+- 决定 404 的 `VIJAYAPANDIANT/smart-study-planner-reference` 是否需要替代链接。
+- 确认技术底座方向（前端 React/Next、后端 FastAPI、Supabase、ts-fsrs、LLM 提供商）。
