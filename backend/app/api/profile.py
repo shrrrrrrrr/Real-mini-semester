@@ -100,12 +100,12 @@ def update_profile(body: ProfileIn, db: Session = Depends(get_db)):
 
 @router.post("/profile/llm-test")
 async def test_llm_connection(db: Session = Depends(get_db)):
-    """测试连接：用当前生效配置（DB 优先，回落 .env）发一次最小请求。"""
+    """测试“我的”页保存的配置；缺项时不回退到 .env。"""
     from app.core.llm import llm_config_effective, chat_json
 
     effective = llm_config_effective(db)
-    if not effective["api_key"]:
-        raise HTTPException(400, "未配置 API Key")
+    if not all((effective["base_url"], effective["api_key"], effective["model"])):
+        raise HTTPException(400, "请先填写接口地址、模型名和 API Key")
     try:
         raw = await chat_json(
             [{"role": "user", "content": "输出 JSON: {\"ok\": true}"}],

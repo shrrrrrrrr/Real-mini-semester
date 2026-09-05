@@ -1,4 +1,4 @@
-/* 知源 · 像素学习桌面
+/* 航友 · 像素学习桌面
    设计语言移植自用户参考站（像素边角、透明面板、硬阴影按钮、昼夜主题动画）。
    结构：
    1. @property 注册主题颜色（昼夜切换时只在根节点插值一次，全站同步变色）
@@ -168,7 +168,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .brand { display: grid; grid-template-columns: 54px 1fr; gap: 10px; align-items: center; }
 .brand-avatar {
   width: 54px; height: 54px; display: grid; place-items: center; overflow: hidden;
-  border: 3px solid var(--line); background: var(--yellow); box-shadow: 4px 4px 0 var(--shadow);
+  border: 3px solid var(--line); background: #003f95; box-shadow: 4px 4px 0 var(--shadow);
   color: #0b3149; font: 700 26px/1 var(--pixel);
 }
 .brand-copy strong { display: block; color: var(--ink-strong); font: 700 21px/1 var(--pixel); white-space: nowrap; }
@@ -397,8 +397,9 @@ textarea.pixel-input { min-height: 80px; resize: vertical; }
 .branch-tree-head .btn { min-height: 32px; padding: 6px 10px; font-size: 12px; }
 .branch-tree-scroll { width: 100%; height: calc(100% - 58px); overflow: auto; border: 2px dashed var(--line-strong); background: var(--panel); }
 .branch-tree-edge { fill: none; stroke: var(--line-strong); stroke-width: 2; }
-.branch-tree-node { cursor: pointer; transform-box: fill-box; transform-origin: center; transition: opacity 160ms ease, transform 160ms var(--ease-out); }
-.branch-tree-node:hover { opacity: .9; transform: translateY(-2px); }
+.branch-tree-node { cursor: pointer; transition: opacity 120ms ease; }
+/* SVG 节点的定位由 transform 属性负责；悬停不能再写 CSS transform，否则会覆盖坐标并造成跳动。 */
+.branch-tree-node:hover { opacity: .86; }
 .branch-tree-node rect { stroke: var(--line-strong); stroke-width: 2.5; }
 .branch-tree-node rect.question { fill: var(--yellow); }
 .branch-tree-node rect.answer { fill: var(--panel-soft); }

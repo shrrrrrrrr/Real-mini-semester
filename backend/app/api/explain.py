@@ -155,7 +155,7 @@ class NodeExpand(BaseModel):
     node_index: int = Field(ge=0)
 
 
-NODE_EXPAND_SYSTEM = """你是"知源"的讲解助手。针对给定的知识点，输出一段完整、循序渐进的讲解正文。
+NODE_EXPAND_SYSTEM = """你是"航友"的讲解助手。针对给定的知识点，输出一段完整、循序渐进的讲解正文。
 
 要求：
 1. 直接输出讲解内容（非 JSON），使用 Markdown 纯文本；

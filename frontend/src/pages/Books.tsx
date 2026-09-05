@@ -22,6 +22,8 @@ const STATUS_TEXT: Record<string, { label: string; cls: string }> = {
 export function BooksPage() {
   const [books, setBooks] = useState<Book[]>([])
   const [uploading, setUploading] = useState(false)
+  const [editingBookId, setEditingBookId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
@@ -51,7 +53,7 @@ export function BooksPage() {
       for (const file of Array.from(files)) {
         const form = new FormData()
         form.append('file', file)
-        // 书名默认取文件名去扩展名（与后端逻辑一致）；用户可在书库页重命名（V2）
+        // 书名默认取文件名去扩展名（与后端逻辑一致）；用户可在书库页随时编辑
         form.append('title', file.name.replace(/\.[^.]+$/, ''))
         const resp = await fetch('/api/books', { method: 'POST', body: form })
         if (!resp.ok) {
@@ -73,6 +75,27 @@ export function BooksPage() {
     try {
       await api.delete(`/books/${b.id}`)
       setBooks((prev) => prev.filter((x) => x.id !== b.id))
+    } catch (e) {
+      toast(errText(e), 'error')
+    }
+  }
+
+  function beginRename(book: Book) {
+    setEditingBookId(book.id)
+    setEditingTitle(book.title)
+  }
+
+  async function saveRename(book: Book) {
+    const title = editingTitle.trim()
+    if (!title) {
+      toast('书名不能为空', 'error')
+      return
+    }
+    try {
+      const updated = await api.patch<Book>(`/books/${book.id}`, { title })
+      setBooks((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
+      setEditingBookId(null)
+      toast('书名与封面已更新')
     } catch (e) {
       toast(errText(e), 'error')
     }
@@ -135,9 +158,22 @@ export function BooksPage() {
                   <div style={{ width: 64, height: 64, background: 'var(--mint)', display: 'grid', placeItems: 'center', border: '3px solid var(--line)' }}>📖</div>
                 )}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <b style={{ font: '700 15px/1.3 var(--pixel)', color: 'var(--ink-strong)', display: 'block', overflowWrap: 'anywhere' }}>
-                    {b.title}
-                  </b>
+                  {editingBookId === b.id ? (
+                    <input
+                      className="pixel-input"
+                      value={editingTitle}
+                      autoFocus
+                      maxLength={120}
+                      onChange={(event) => setEditingTitle(event.target.value)}
+                      onKeyDown={(event) => event.key === 'Enter' && void saveRename(b)}
+                      style={{ width: '100%', minHeight: 34, padding: '5px 7px', fontSize: 13 }}
+                      aria-label="编辑书名"
+                    />
+                  ) : (
+                    <b style={{ font: '700 15px/1.3 var(--pixel)', color: 'var(--ink-strong)', display: 'block', overflowWrap: 'anywhere' }}>
+                      {b.title}
+                    </b>
+                  )}
                   <span className={st.cls} style={{ marginTop: 6 }}>{st.label}</span>
                 </div>
               </div>
@@ -152,6 +188,14 @@ export function BooksPage() {
                   <button className="btn" style={{ flex: 1, minHeight: 30, fontSize: 12 }} onClick={() => void reindex(b)}>
                     重新解析
                   </button>
+                )}
+                {editingBookId === b.id ? (
+                  <>
+                    <button className="btn btn-primary" style={{ minHeight: 30, fontSize: 12, padding: '4px 10px' }} onClick={() => void saveRename(b)}>保存</button>
+                    <button className="btn" style={{ minHeight: 30, fontSize: 12, padding: '4px 10px' }} onClick={() => setEditingBookId(null)}>取消</button>
+                  </>
+                ) : (
+                  <button className="btn" style={{ minHeight: 30, fontSize: 12, padding: '4px 10px' }} onClick={() => beginRename(b)}>改名</button>
                 )}
                 <button className="btn btn-danger" style={{ marginLeft: 'auto', minHeight: 30, fontSize: 12, padding: '4px 10px' }} onClick={() => void removeBook(b)}>
                   删除

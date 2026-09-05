@@ -24,27 +24,19 @@ router = APIRouter()
 
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024  # 大部头教材上限 200MB
 
-# 像素风封面调色板（与站点主题色一致的 8 色）
-COVER_PALETTE = [
-    ("#58a9da", "#123a58"),
-    ("#a5dcbf", "#123a58"),
-    ("#f0df83", "#082941"),
-    ("#efaa8b", "#082941"),
-    ("#67bce9", "#102b3d"),
-    ("#75bfa6", "#102b3d"),
-    ("#d9ca72", "#0b3149"),
-    ("#d98f7d", "#0b3149"),
-]
+# 书库封面只使用北航蓝与薄荷绿；每本书的像素排布由标题哈希稳定生成。
+COVER_BLUE = "#247fb8"
+COVER_GREEN = "#75bfa6"
 
 
 def make_cover(title: str) -> str:
-    """按书名生成像素风占位封面（标题哈希选色 + 16×16 像素块图案）。
+    """按书名生成蓝绿像素风占位封面（标题哈希 + 16×16 像素块图案）。
 
     输出 data URL（PNG base64）——小图直接内联存储，无需静态目录。
     图案：伪随机（标题哈希种子）的对称像素图案，每本书稳定不变。
     """
     seed = abs(hash(title)) % (2**32)
-    fg, bg = COVER_PALETTE[seed % len(COVER_PALETTE)]
+    fg, bg = (COVER_BLUE, COVER_GREEN) if seed % 2 else (COVER_GREEN, COVER_BLUE)
 
     def rgb(hexc: str):
         return tuple(int(hexc[i : i + 2], 16) for i in (1, 3, 5))
@@ -81,6 +73,12 @@ def make_cover(title: str) -> str:
 
 
 class BookCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=120)
+
+
+class BookUpdate(BaseModel):
+    """只允许编辑展示书名；原文件与索引不受影响。"""
+
     title: str = Field(min_length=1, max_length=120)
 
 
@@ -159,6 +157,19 @@ async def upload_book(
     db.commit()
     db.refresh(book)
     spawn_book_index_task(book.id).start()
+    return _to_out(book)
+
+
+@router.patch("/books/{book_id}", response_model=BookOut)
+def update_book(book_id: str, body: BookUpdate, db: Session = Depends(get_db)):
+    """重命名书库条目，并按新标题生成新的蓝绿像素封面。"""
+    book = db.get(Book, book_id)
+    if book is None:
+        raise HTTPException(404, "图书不存在")
+    book.title = body.title.strip()
+    book.cover = make_cover(book.title)
+    db.commit()
+    db.refresh(book)
     return _to_out(book)
 
 

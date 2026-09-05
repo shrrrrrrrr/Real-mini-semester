@@ -66,6 +66,48 @@ class TestProfile:
         r = client.patch("/api/profile", json={"avatar": "x" * (250 * 1024)})
         assert r.status_code == 400
 
+class TestLocalApiConfiguration:
+    def test_blank_profile_does_not_fall_back_to_env_key(self):
+        """用户未在“我的”页保存配置时，应用不得静默使用 .env 的旧 Key。"""
+        from app.core.llm import llm_config_effective
+
+        db = SessionLocal()
+        try:
+            config = llm_config_effective(db)
+        finally:
+            db.close()
+        assert config == {"base_url": None, "api_key": None, "model": None}
+
+
+class TestBooks:
+    def test_rename_book_regenerates_blue_green_cover(self, client):
+        """书名编辑是持久化操作，封面需要按新标题重新生成。"""
+        from app.models import Book
+
+        db = SessionLocal()
+        try:
+            book = Book(
+                id="rename-book-test",
+                title="旧书名",
+                cover="old-cover",
+                filename="old.pdf",
+                file_type="pdf",
+                stored_path="unused-test-file",
+                locator_type="page",
+                status="indexed",
+            )
+            db.merge(book)
+            db.commit()
+        finally:
+            db.close()
+
+        response = client.patch("/api/books/rename-book-test", json={"title": "新书名"})
+        assert response.status_code == 200
+        body = response.json()
+        assert body["title"] == "新书名"
+        assert body["cover"].startswith("data:image/png;base64,")
+        assert body["cover"] != "old-cover"
+        client.delete("/api/books/rename-book-test")
 
 class TestBranchChat:
     def _make_course(self, client, name="树课程") -> str:
@@ -111,21 +153,25 @@ class TestBranchChat:
         tree = client.get(f"/api/sessions/{sid}/tree").json()
         assert len(tree["roots"]) == 1  # 唯一主干根
         root = tree["roots"][0]
+        assert root["role"] == "user"
         assert root["content"].startswith("Q1")
-        assert root["answer_id"] is not None
-        assert len(root["children"]) == 2  # Q2a 与 Q2b 两个分支
-        child_contents = {c["content"][:3] for c in root["children"]}
+        # 每条消息单独成节点：Q1 → A1，再由 A1 分出 Q2a/Q2b。
+        answer = root["children"][0]
+        assert answer["role"] == "assistant"
+        assert answer["content"].startswith("A1")
+        assert len(answer["children"]) == 2
+        child_contents = {c["content"][:3] for c in answer["children"]}
         assert child_contents == {"Q2a", "Q2b"}
 
         # 重命名分支
-        q2a_id = next(c["id"] for c in root["children"] if c["content"].startswith("Q2a"))
+        q2a_id = next(c["id"] for c in answer["children"] if c["content"].startswith("Q2a"))
         r = client.patch(f"/api/messages/{q2a_id}/rename", json={"branch_name": "旋转机制"}).json()
         assert r["branch_name"] == "旋转机制"
 
         # 树里可见新名
         tree2 = client.get(f"/api/sessions/{sid}/tree").json()
         named = next(
-            c for c in tree2["roots"][0]["children"] if c["id"] == q2a_id
+            c for c in tree2["roots"][0]["children"][0]["children"] if c["id"] == q2a_id
         )
         assert named["branch_name"] == "旋转机制"
 

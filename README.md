@@ -1,4 +1,4 @@
-# 知源（Zhiyuan）
+# 航友（Hangyou）
 
 > 面向大学生的课程资料智能问答与复习系统 —— 把"看资料"变成"问资料、测自己、记得住"。
 
@@ -27,7 +27,7 @@
 cd backend
 python -m venv venv && venv\Scripts\activate    # Windows
 pip install -r requirements.txt
-copy .env.example .env                          # 填入 LLM_API_KEY（DeepSeek 等）
+# API 配置请在网页「我的 → AI 服务设置」填写；.env 不再作为运行时回退
 python run.py
 ```
 
@@ -41,7 +41,7 @@ npm install
 npm run dev
 ```
 
-浏览器打开 http://localhost:5173 即可使用（问答/测验需在 `backend/.env` 配置 `LLM_API_KEY`）。
+浏览器打开 http://localhost:5173；首次进行问答、测验或讲解前，请在「我的 → AI 服务设置」填写接口地址、模型名与 API Key。
 
 ## 项目结构
 

@@ -32,33 +32,33 @@ class LLMFormatError(LLMError):
 
 
 def llm_config_effective(db=None) -> dict:
-    """取生效配置：用户配置（DB）优先，回落 .env。
+    """只读取“我的”页保存的 LLM 配置，不再回退到 backend/.env。
 
-    db 为 FastAPI 请求会话或独立会话均可；异常时静默回落 .env。
+    这样用户能明确知道当前由哪套 API 配置付费和回答；缺任一项时，
+    调用方统一提示到“我的”页设置，而不是悄悄使用历史环境变量。
     """
-    base_url = settings.llm_base_url
-    api_key = settings.llm_api_key
-    model = settings.llm_model
+    empty = {"base_url": None, "api_key": None, "model": None}
+    if db is None:
+        return empty
     try:
-        if db is not None:
-            from app.models import UserProfile
+        from app.models import UserProfile
 
-            profile = db.get(UserProfile, 1)
-            if profile is not None:
-                if profile.llm_base_url:
-                    base_url = profile.llm_base_url
-                if profile.llm_api_key:
-                    api_key = profile.llm_api_key
-                if profile.llm_model:
-                    model = profile.llm_model
+        profile = db.get(UserProfile, 1)
+        if profile is None:
+            return empty
+        return {
+            "base_url": profile.llm_base_url,
+            "api_key": profile.llm_api_key,
+            "model": profile.llm_model,
+        }
     except Exception:
-        pass  # 配置读取失败不阻断调用，回落 .env
-    return {"base_url": base_url, "api_key": api_key, "model": model}
+        # 配置读取失败时宁可拒绝调用，也不能泄漏回退到旧环境配置。
+        return empty
 
 
 def _headers(cfg: dict) -> dict[str, str]:
-    if not cfg["api_key"]:
-        raise LLMError("未配置 LLM_API_KEY：请在「我的 → AI 服务设置」填写后重试")
+    if not all((cfg["base_url"], cfg["api_key"], cfg["model"])):
+        raise LLMError("请先在「我的 → AI 服务设置」填写接口地址、模型名和 API Key")
     return {
         "Authorization": f"Bearer {cfg['api_key']}",
         "Content-Type": "application/json",

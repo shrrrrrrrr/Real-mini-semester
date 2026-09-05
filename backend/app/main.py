@@ -1,4 +1,4 @@
-"""知源后端入口：FastAPI 应用工厂。
+"""航友后端入口：FastAPI 应用工厂。
 
 本地优先架构（无云依赖）：
 - SQLite 单文件主存储 + 本地原件目录；
@@ -30,7 +30,7 @@ def create_app() -> FastAPI:
         logging.getLogger(__name__).warning("嵌入模型预热失败（离线？）：%s", e)
 
     app = FastAPI(
-        title="知源 API",
+        title="航友 API",
         description="面向大学生的课程资料智能问答与复习系统（本地优先）",
         version="1.0.0",
     )
