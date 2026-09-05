@@ -1,11 +1,14 @@
 """LLM 客户端：OpenAI 兼容协议封装。
 
-能力：
-- chat_stream：流式对话（SSE 用），逐 token 产出；
-- generate_structured：结构化输出（JSON 契约 + Pydantic 校验 + 定向重试），
-  双层答案分段与测验题目均由它保证合规。
+配置优先级（用户确认的"我的"页设置）：
+用户配置（SQLite user_profile）> backend/.env 环境变量。
+所有调用方传 db 会话，读取生效配置；无 db 时回落 .env。
 
-供应商中立：换 DeepSeek / GLM / Qwen / OpenAI 只需改环境变量。
+能力：
+- chat_stream / chat_json：对话（流式 / JSON mode）；
+- generate_structured：结构化输出（契约 + Pydantic 校验 + 定向重试）。
+
+供应商中立：换 DeepSeek / GLM / Qwen / OpenAI 只需改配置。
 """
 
 import json
@@ -28,11 +31,36 @@ class LLMFormatError(LLMError):
     """结构化输出经重试后仍不合规（宁缺毋滥，向上抛错）。"""
 
 
-def _headers() -> dict[str, str]:
-    if not settings.llm_api_key:
-        raise LLMError("未配置 LLM_API_KEY：请在 backend/.env 中填写后重启")
+def llm_config_effective(db=None) -> dict:
+    """取生效配置：用户配置（DB）优先，回落 .env。
+
+    db 为 FastAPI 请求会话或独立会话均可；异常时静默回落 .env。
+    """
+    base_url = settings.llm_base_url
+    api_key = settings.llm_api_key
+    model = settings.llm_model
+    try:
+        if db is not None:
+            from app.models import UserProfile
+
+            profile = db.get(UserProfile, 1)
+            if profile is not None:
+                if profile.llm_base_url:
+                    base_url = profile.llm_base_url
+                if profile.llm_api_key:
+                    api_key = profile.llm_api_key
+                if profile.llm_model:
+                    model = profile.llm_model
+    except Exception:
+        pass  # 配置读取失败不阻断调用，回落 .env
+    return {"base_url": base_url, "api_key": api_key, "model": model}
+
+
+def _headers(cfg: dict) -> dict[str, str]:
+    if not cfg["api_key"]:
+        raise LLMError("未配置 LLM_API_KEY：请在「我的 → AI 服务设置」填写后重试")
     return {
-        "Authorization": f"Bearer {settings.llm_api_key}",
+        "Authorization": f"Bearer {cfg['api_key']}",
         "Content-Type": "application/json",
     }
 
@@ -40,23 +68,22 @@ def _headers() -> dict[str, str]:
 async def chat_stream(
     messages: list[dict],
     temperature: float = 0.3,
+    db=None,
 ) -> AsyncIterator[str]:
-    """流式对话：逐 token 产出文本片段。
-
-    messages 为 OpenAI 格式（system/user/assistant）。
-    """
+    """流式对话：逐 token 产出文本片段（OpenAI 格式 messages）。"""
+    cfg = llm_config_effective(db)
     payload = {
-        "model": settings.llm_model,
+        "model": cfg["model"],
         "messages": messages,
         "stream": True,
         "temperature": temperature,
     }
-    url = f"{settings.llm_base_url.rstrip('/')}/chat/completions"
+    url = f"{cfg['base_url'].rstrip('/')}/chat/completions"
     timeout = httpx.Timeout(120.0, connect=15.0)
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream(
-                "POST", url, headers=_headers(), json=payload
+                "POST", url, headers=_headers(cfg), json=payload
             ) as resp:
                 if resp.status_code != 200:
                     body = (await resp.aread()).decode("utf-8", "ignore")
@@ -95,19 +122,41 @@ def _strip_json_fence(raw: str) -> str:
 async def chat_json(
     messages: list[dict],
     temperature: float = 0.3,
+    db=None,
 ) -> str:
     """非流式 JSON 模式调用：返回模型输出的原始字符串。"""
+    cfg = llm_config_effective(db)
     payload = {
-        "model": settings.llm_model,
+        "model": cfg["model"],
         "messages": messages,
         "temperature": temperature,
         "response_format": {"type": "json_object"},
     }
-    url = f"{settings.llm_base_url.rstrip('/')}/chat/completions"
+    return await _chat_request(cfg, payload)
+
+
+async def chat_json_plain(
+    messages: list[dict],
+    temperature: float = 0.4,
+    db=None,
+) -> str:
+    """非流式纯文本调用（无 JSON mode）：节点展开讲解等自由正文场景。"""
+    cfg = llm_config_effective(db)
+    payload = {
+        "model": cfg["model"],
+        "messages": messages,
+        "temperature": temperature,
+    }
+    return await _chat_request(cfg, payload)
+
+
+async def _chat_request(cfg: dict, payload: dict) -> str:
+    """公共请求逻辑：POST chat/completions 并取 content。"""
+    url = f"{cfg['base_url'].rstrip('/')}/chat/completions"
     timeout = httpx.Timeout(120.0, connect=15.0)
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(url, headers=_headers(), json=payload)
+            resp = await client.post(url, headers=_headers(cfg), json=payload)
             if resp.status_code != 200:
                 raise LLMError(
                     f"LLM 接口错误 {resp.status_code}: {resp.text[:300]}"
@@ -125,6 +174,7 @@ async def generate_structured(
     schema: type[T],
     max_retries: int | None = None,
     temperature: float = 0.3,
+    db=None,
 ) -> T:
     """结构化生成：JSON mode 输出 → Pydantic 校验 → 失败携带具体错误定向重试。
 
@@ -136,7 +186,7 @@ async def generate_structured(
     current = list(messages)
     last_error: Exception | None = None
     for _ in range(max_retries + 1):
-        raw = await chat_json(current, temperature=temperature)
+        raw = await chat_json(current, temperature=temperature, db=db)
         try:
             return schema.model_validate_json(_strip_json_fence(raw))
         except ValidationError as e:

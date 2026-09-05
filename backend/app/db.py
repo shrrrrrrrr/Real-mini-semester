@@ -42,8 +42,18 @@ def get_db() -> Iterator[Session]:
 
 
 def init_db() -> None:
-    """建表：幂等（表已存在则跳过）。"""
+    """建表（幂等）+ 惰性播种用户配置单行。"""
     from app import models  # noqa: F401  确保模型注册
 
     Base = models.Base
     Base.metadata.create_all(engine)
+
+    # 用户配置单行（id=1）不存在则建
+    from sqlalchemy import select
+
+    from app.models import UserProfile
+
+    with SessionLocal() as db:
+        if db.get(UserProfile, 1) is None:
+            db.add(UserProfile(id=1, nickname="学习者"))
+            db.commit()

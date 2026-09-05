@@ -34,6 +34,58 @@ class Base(DeclarativeBase):
 
 
 # ---------------------------------------------------------------------------
+# 用户配置（单用户本地应用：固定一行记录 id=1）
+# ---------------------------------------------------------------------------
+
+
+class UserProfile(Base):
+    """本地用户资料与设置（单行表）。
+
+    安全说明（答辩点）：API Key 明文存本地 SQLite——本地单机应用的
+    威胁模型本就是"能物理访问本机的人"，加密属形式主义；界面层
+    脱敏展示（sk-***）。数据不出本机。
+    """
+
+    __tablename__ = "user_profile"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)  # 恒为 1
+    nickname: Mapped[str] = mapped_column(Text, default="学习者")
+    avatar: Mapped[str | None] = mapped_column(Text, default=None)  # JPEG base64（前端压缩后）
+    llm_base_url: Mapped[str | None] = mapped_column(Text, default=None)
+    llm_api_key: Mapped[str | None] = mapped_column(Text, default=None)
+    llm_model: Mapped[str | None] = mapped_column(Text, default=None)
+    onboarding_done: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+# ---------------------------------------------------------------------------
+# 后台生成任务（讲解大纲/测验/问答：切页面不中断，回来轮询取结果）
+# ---------------------------------------------------------------------------
+
+
+class GenTask(Base):
+    """LLM 生成任务：异步执行、结果落库、前端轮询。
+
+    kind: explain（讲解大纲）/ explain_node（节点展开讲解）/ quiz（测验）
+    status: pending → running → done / failed
+    result 存 JSON（大纲树/题目列表），failed_reason 存错误信息。
+    """
+
+    __tablename__ = "gen_tasks"
+    __table_args__ = (Index("ix_gentasks_kind_ctx", "kind", "context_id"),)
+
+    id: Mapped[str] = mapped_column(primary_key=True)  # UUID
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    context_id: Mapped[str | None] = mapped_column(Text, default=None)  # 关联实体（如 explain id）
+    course_id: Mapped[str | None] = mapped_column(Text, default=None)
+    params: Mapped[dict] = mapped_column(JSON, default=dict)  # 请求参数快照
+    status: Mapped[str] = mapped_column(Text, default="pending")
+    result: Mapped[dict | list | None] = mapped_column(JSON, default=None)
+    failed_reason: Mapped[str | None] = mapped_column(Text, default=None)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(default=None)
+
+
+# ---------------------------------------------------------------------------
 # 课程与资料
 # ---------------------------------------------------------------------------
 
@@ -146,18 +198,23 @@ class ChatSession(Base):
 class Message(Base):
     """消息：segments 存双层答案分区，citations 存引用片段（由后端从 chunks 原样取出）。
 
-    parent_message_id 预留树形结构（V1.5 多分支提问），V1 恒为 NULL。
+    分支树形结构：parent_message_id 指向被追问的 assistant 消息；
+    branch_name 存该分支的用户自定义命名（浮层图右键重命名）。
+    树视图约定：user 消息为"问题节点"，其 parent 是被追问的答案。
     """
 
     __tablename__ = "messages"
+    __table_args__ = (Index("ix_messages_parent", "parent_message_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    session_id: Mapped[int] = mapped_column(ForeignKey("chat_sessions.id"), index=True)
+    session_id: Mapped[str] = mapped_column(ForeignKey("chat_sessions.id"), index=True)
+    # 自引用树形：删除父消息级联删子孙（分支随根删除）
     parent_message_id: Mapped[int | None] = mapped_column(
-        ForeignKey("messages.id"), default=None
+        ForeignKey("messages.id", ondelete="CASCADE"), default=None
     )
     role: Mapped[str] = mapped_column(Text, nullable=False)  # user / assistant
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    branch_name: Mapped[str | None] = mapped_column(Text, default=None)  # 分支命名（user 消息）
     # 双层答案分区：[{"layer": "doc"|"general", "text": "..."}]
     segments: Mapped[list | None] = mapped_column(JSON, default=None)
     # 引用列表：[{"index": 1, "chunk_id": 5, "filename": "...", "locator": "第12页", "snippet": "..."}]
@@ -173,15 +230,23 @@ class Message(Base):
 
 
 class Explain(Base):
-    """讲解大纲：按书名/学科/章节生成的结构化大纲，节点可挂接已上传资料片段。"""
+    """讲解大纲：按书名/学科/章节生成的结构化大纲，节点可挂接已上传资料片段。
+
+    node_contents 存"已展开讲解"节点的正文（"secIdx:nodeIdx" → 讲解文本），
+    支持切页面后回来仍能看到已生成的讲解内容。
+    """
 
     __tablename__ = "explains"
 
     id: Mapped[str] = mapped_column(primary_key=True)  # UUID
-    course_id: Mapped[str] = mapped_column(ForeignKey("courses.id"), index=True)
+    course_id: Mapped[str | None] = mapped_column(
+        ForeignKey("courses.id"), index=True, default=None
+    )
     topic: Mapped[str] = mapped_column(Text, nullable=False)
     # 大纲树：[{"title": "...", "nodes": [{"title": "...", "linked_chunk_ids": []}]}]
     outline: Mapped[list] = mapped_column(JSON, nullable=False)
+    # 节点展开讲解正文：{"secIdx:nodeIdx": "讲解文本"}
+    node_contents: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     course: Mapped["Course | None"] = relationship(back_populates="explains")

@@ -35,6 +35,8 @@ export interface MessageInfo {
   id: number
   role: string
   content: string
+  parent_message_id?: number | null
+  branch_name?: string | null
   segments: { layer: 'doc' | 'general'; text: string }[] | null
   citations:
     | {
@@ -132,4 +134,81 @@ export interface Stats {
   correct_rate: number
   streak_days: number
   last_7_days: { date: string; reviewed: number; due: number }[]
+}
+
+/* ===== 新增：我的页 / 任务 / 分支 / 历史 ===== */
+
+export interface Profile {
+  nickname: string
+  avatar: string | null
+  llm_base_url: string | null
+  llm_model: string | null
+  llm_key_hint: string | null
+  onboarding_done: boolean
+}
+
+export interface GenTaskInfo {
+  id: string
+  kind: string
+  context_id: string | null
+  course_id: string | null
+  status: 'pending' | 'running' | 'done' | 'failed'
+  result: unknown
+  failed_reason: string | null
+  created_at: string
+  finished_at: string | null
+}
+
+export interface TreeNode {
+  id: number
+  content: string
+  branch_name: string | null
+  answer_id: number | null
+  children: TreeNode[]
+}
+
+export interface ExplainInfoV2 {
+  id: string
+  course_id: string | null
+  topic: string
+  sections: {
+    title: string
+    nodes: {
+      title: string
+      summary: string
+      linked_hint: string
+      linked_chunk_ids: number[]
+      selected?: string
+      is_correct?: boolean
+    }[]
+  }[]
+  node_contents: Record<string, string>
+  created_at: string
+}
+
+export interface QuizListItem {
+  id: string
+  course_id: string
+  question_count: number
+  created_at: string
+  attempted: boolean
+}
+
+export interface QuizDetail {
+  id: string
+  course_id: string
+  question_count: number
+  created_at: string
+  attempted: boolean
+  questions: {
+    id: number
+    question_no: number
+    stem: string
+    options: string[]
+    difficulty: string
+    answer?: string
+    explanation?: string
+    selected?: string
+    is_correct?: boolean
+  }[]
 }

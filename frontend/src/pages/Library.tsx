@@ -70,9 +70,23 @@ export function LibraryPage() {
     try {
       const c = await api.post<Course>('/courses', { name })
       setNewCourse('')
-      setCourses((prev) => [...prev, c])
+      setCourses((prev) => [c, ...prev])
       setActiveCourse(c.id)
       toast(`课程「${name}」已创建`)
+    } catch (e) {
+      toast(errText(e), 'error')
+    }
+  }
+
+  async function removeCourse(courseId: string) {
+    try {
+      await api.delete(`/courses/${courseId}`)
+      setCourses((prev) => prev.filter((c) => c.id !== courseId))
+      if (activeCourse === courseId) {
+        setActiveCourse(null)
+        setDocs([])
+      }
+      toast('课程已删除')
     } catch (e) {
       toast(errText(e), 'error')
     }
@@ -153,21 +167,36 @@ export function LibraryPage() {
           </div>
           <div style={{ display: 'grid', gap: '10px', marginTop: '14px' }}>
             {courses.map((c) => (
-              <button
-                key={c.id}
-                className="btn"
-                style={{
-                  justifyContent: 'space-between',
-                  background: c.id === activeCourse ? 'var(--mint)' : undefined,
-                  color: c.id === activeCourse ? '#102f46' : undefined,
-                }}
-                onClick={() => setActiveCourse(c.id)}
-              >
-                <span>{c.name}</span>
-                <span style={{ font: "7px/1 var(--mono)", opacity: 0.8 }}>
-                  {c.indexed_count}/{c.document_count} 就绪 · {c.due_count} 到期
-                </span>
-              </button>
+              <div key={c.id} style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  className="btn"
+                  style={{
+                    flex: 1,
+                    justifyContent: 'space-between',
+                    background: c.id === activeCourse ? 'var(--mint)' : undefined,
+                    color: c.id === activeCourse ? '#102f46' : undefined,
+                  }}
+                  onClick={() => setActiveCourse(c.id)}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                  <span style={{ font: "7px/1 var(--mono)", opacity: 0.8, flexShrink: 0 }}>
+                    {c.indexed_count}/{c.document_count}
+                  </span>
+                </button>
+                <button
+                  className="btn btn-danger"
+                  style={{ width: 40, padding: 0 }}
+                  title={`删除课程「${c.name}」（连同资料、问答、测验、闪卡）`}
+                  aria-label={`删除课程 ${c.name}`}
+                  onClick={() => {
+                    if (confirm(`删除课程「${c.name}」？\n其资料、问答、测验、闪卡将一并删除，不可恢复。`)) {
+                      void removeCourse(c.id)
+                    }
+                  }}
+                >
+                  ×
+                </button>
+              </div>
             ))}
             {courses.length === 0 && (
               <p style={{ color: 'var(--muted)', margin: 0, lineHeight: 1.7 }}>

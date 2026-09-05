@@ -83,7 +83,13 @@ export interface StreamHandlers {
 }
 
 export async function streamChat(
-  body: { course_id: string; session_id?: string | null; question: string },
+  body: {
+    course_id: string
+    session_id?: string | null
+    question: string
+    parent_message_id?: number | null
+    docs_only?: boolean
+  },
   handlers: StreamHandlers,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -147,4 +153,28 @@ export async function streamChat(
       }
     }
   }
+}
+
+/* ---------------------------------------------------------------------------
+ * 生成任务轮询：切页面不中断（后台跑完落库，回来即见结果）
+ * ------------------------------------------------------------------------- */
+
+import type { GenTaskInfo } from './types'
+
+export function pollTask(
+  taskId: string,
+  onUpdate: (t: GenTaskInfo) => void,
+  intervalMs = 1500,
+): { cancel: () => void; promise: Promise<GenTaskInfo> } {
+  let cancelled = false
+  const promise = (async () => {
+    for (;;) {
+      if (cancelled) throw new Error('cancelled')
+      const t = await api.get<GenTaskInfo>(`/tasks/${taskId}`)
+      onUpdate(t)
+      if (t.status === 'done' || t.status === 'failed') return t
+      await new Promise((r) => setTimeout(r, intervalMs))
+    }
+  })()
+  return { cancel: () => (cancelled = true), promise }
 }

@@ -8,9 +8,9 @@ import { ThemeProvider } from './lib/theme'
 import { ChatPage } from './pages/Chat'
 import { ExplainPage } from './pages/Explain'
 import { LibraryPage } from './pages/Library'
+import { ProfilePage } from './pages/Profile'
 import { QuizPage } from './pages/Quiz'
 import { ReviewPage } from './pages/Review'
-import { StatsPage } from './pages/Stats'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -25,7 +25,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="/explain" element={<ExplainPage />} />
               <Route path="/quiz" element={<QuizPage />} />
               <Route path="/review" element={<ReviewPage />} />
-              <Route path="/stats" element={<StatsPage />} />
+              <Route path="/me" element={<ProfilePage />} />
             </Route>
           </Routes>
         </HashRouter>

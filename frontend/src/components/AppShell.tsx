@@ -37,14 +37,9 @@ export function AppShell() {
 
         <nav className="main-nav" aria-label="主导航">
           {NAV_ITEMS.map((item) => (
-            <NavLink key={item.to} to={item.to}>
-              {({ isActive }) => (
-                <>
-                  <b>{item.num}</b>
-                  <span>{item.label}</span>
-                  {isActive ? '' : ''}
-                </>
-              )}
+            <NavLink key={item.to} to={item.to} className={({ isActive }) => (isActive ? 'active' : '')}>
+              <b>{item.num}</b>
+              <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>
@@ -53,12 +48,13 @@ export function AppShell() {
           <button
             className="icon-button"
             type="button"
-            aria-label="统计看板"
-            title="统计"
-            onClick={() => (window.location.hash = '#/stats')}
+            aria-label="我的"
+            title="我的（资料 / AI 设置 / 统计）"
+            onClick={() => (window.location.hash = '#/me')}
           >
             <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M4 20V10M10 20V4M16 20v-8M22 20H2" />
+              <circle cx="12" cy="8" r="4"></circle>
+              <path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"></path>
             </svg>
           </button>
           <ThemeToggle />
