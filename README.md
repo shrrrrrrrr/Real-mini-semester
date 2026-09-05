@@ -8,6 +8,7 @@
 每天打开资料库时，航友还会送你一句学习寄语。希望每一次开始学习，都能收到一点轻松而真诚的鼓励。🌱
 
 > 愿你今天的每一次提问，都离真正理解更近一点。
+> <img width="1248" height="570" alt="image" src="https://github.com/user-attachments/assets/091c2e4f-b97b-49c4-96f0-bbbcc5922857" />
 
 ---
 
@@ -84,11 +85,8 @@
 
 ---
 
-## 🏗️ 系统架构
+🏗️ 系统架构
 
-![航友系统架构](docs/assets/hangyou-system-architecture.svg)
-
-```text
 React 前端
     ↓ HTTP / SSE
 FastAPI 后端
@@ -98,44 +96,28 @@ FastAPI 后端
 SQLite 本地数据 + 上传原件 + 引用片段
     ↓
 OpenAI 兼容大模型 API
-```
-
-航友采用“本地优先”设计：
-
+航友采用“本地优先”架构：
 - 课程、资料、书库、问答记录、测验记录和闪卡默认存储在本机；
 - 不需要注册账号即可使用；
-- 只有用户主动配置大模型接口后，问答、讲解和测验功能才会调用外部 AI 服务。
+- 只有用户主动配置大模型接口后，问答、讲解和测验功能才会调用外部 AI 服务；
+- 当前版本不提供跨设备云同步。
+🛠️ 技术栈
+分类	技术
+前端	React 19、TypeScript、Vite、Tailwind CSS
+后端	Python 3.12、FastAPI、SQLAlchemy
+数据存储	SQLite
+文档解析	pypdf、python-docx、python-pptx、ebooklib
+检索	sentence-transformers MiniLM、BM25、RRF
+AI 接口	OpenAI 兼容协议，可接入 DeepSeek、GLM、Qwen 等
+学习调度	ts-fsrs
+移动端	Capacitor Android
 
----
 
-## 🛠️ 技术栈
-
-| 分类 | 技术 |
-|---|---|
-| 前端 | React 19、TypeScript、Vite、Tailwind CSS |
-| 后端 | Python 3.12、FastAPI、SQLAlchemy |
-| 数据存储 | SQLite |
-| 文档解析 | pypdf、python-docx、python-pptx、ebooklib |
-| 检索 | sentence-transformers MiniLM、BM25、RRF |
-| AI 接口 | OpenAI 兼容协议，可接入 DeepSeek、GLM、Qwen 等 |
-| 学习调度 | ts-fsrs |
-| 移动端 | Capacitor Android |
-| 部署 | Vercel 前端 + Hugging Face Spaces Docker 后端 |
-
----
-
-## 🚀 本地运行
-
-### 1. 获取项目
-
-```bash
+🚀 本地运行
+1. 获取项目
 git clone https://github.com/shrrrrrrrr/Real-mini-semester.git
 cd Real-mini-semester
-```
-
-### 2. 启动后端
-
-```bash
+2. 启动后端
 cd backend
 
 python -m venv venv
@@ -143,116 +125,45 @@ venv\Scripts\activate
 
 pip install -r requirements.txt
 python run.py
-```
-
 后端默认运行在：
-
-```text
 http://127.0.0.1:8000
-```
-
 首次启动时会下载 MiniLM 嵌入模型，约 90MB；后续可离线使用本地模型。
-
-### 3. 启动前端
-
+3. 启动前端
 新开一个终端：
-
-```bash
 cd frontend
 
 npm install
 npm run dev
-```
-
 浏览器访问：
-
-```text
 http://localhost:5173
-```
-
----
-
-## 🔑 配置 AI API
-
+🔑 配置 AI API
 航友不会默认调用任何历史 API Key。
-
 启动网页后，进入：
-
-```text
 我的 → AI 服务设置
-```
-
 填写以下内容：
+字段	示例
+接口地址	https://api.deepseek.com/v1
+模型名	deepseek-chat
+API Key	你的供应商 API Key
 
-| 字段 | 示例 |
-|---|---|
-| 接口地址 | `https://api.deepseek.com/v1` |
-| 模型名 | `deepseek-chat` |
-| API Key | 你的供应商 API Key |
 
 然后点击：
-
-```text
 保存并测试连接
-```
-
 连接成功后，才可以使用问答、讲解、测验等 AI 功能。
+API Key 保存在本机数据库中，请不要把它提交到 GitHub，也不要放入公开截图中。🔒
 
-> 建议不要把 API Key 提交到 GitHub，也不要放入公开截图中。🔒
-
----
-
-## ☁️ 在线部署
-
-航友的部署分为两部分：
-
-```text
-Vercel：部署 React 前端
-Hugging Face Spaces：部署 FastAPI 后端、检索模型和 SQLite 数据
-```
-
-### 后端部署到 Hugging Face Spaces
-
-1. 在 Hugging Face 创建一个新的 Space；
-2. SDK 选择 `Docker`；
-3. 上传 `backend/` 目录中的 Dockerfile、requirements.txt、run.py 和 `app/`；
-4. 在 Space 的 `Settings → Variables and secrets` 中配置：
-
-```text
-LLM_BASE_URL
-LLM_API_KEY
-LLM_MODEL
-EXTRA_CORS_ORIGINS
-```
-
-后端健康检查地址：
-
-```text
-https://你的 Space 地址/api/health
-```
-
-### 前端部署到 Vercel
-
-1. 在 Vercel 导入本 GitHub 仓库；
-2. Root Directory 设置为：
-
-```text
-frontend
-```
-
-3. 添加环境变量：
-
-```text
-VITE_API_BASE_URL=https://你的 Hugging Face Space 地址/api
-```
-
-4. 部署完成后，将 Vercel 域名填入 Hugging Face 的：
-
-```text
-EXTRA_CORS_ORIGINS
-```
-
-详细步骤见：[部署指南](docs/部署指南.md)。
+💾 本地数据说明
+默认情况下，数据保存在项目后端目录：
+backend/data/zhiyuan.db
+backend/data/uploads/
+其中：
+- zhiyuan.db：课程、对话、引用、测验、闪卡、复习记录和个人设置；
+- uploads/：上传的课程资料与电子书原件。
+因此：
+- 关闭网页或重启程序后，学习记录会保留；
+- 只要不删除上述文件，资料和学习记忆就不会丢失；
+- 换电脑运行时，不会自动同步历史记录；
+- 当前版本没有注册、登录或退出登录功能。
 
 ---
 
@@ -282,9 +193,7 @@ http://192.168.1.8:8000/api
 
 ---
 
-## 📂 项目结构
-
-```text
+📂 项目结构
 Real-mini-semester/
 ├── frontend/                    # React 前端
 │   ├── src/pages/               # 资料库、书库、问答、讲解、测验、复习、我的
@@ -295,17 +204,12 @@ Real-mini-semester/
 │   ├── app/core/                # 解析、分块、检索、LLM、提示词
 │   ├── app/models.py            # SQLite 数据模型
 │   └── tests/                   # 接口与功能测试
-├── desktop/                     # Windows Electron 打包工程
-├── docs/                        # 开发文档、部署指南、架构图
-├── AGENTS.md                    # 协作规范
+├── desktop/                     # Windows 打包工程
+├── docs/                        # 开发文档、架构图与调研材料
+├── AGENTS.md                    # 项目协作规范
 └── HANDOFF.md                   # 项目交接记录
-```
 
----
-
-## 🧪 验证
-
-```bash
+🧪 验证
 # 后端测试
 cd backend
 python -m pytest tests -q
@@ -313,10 +217,7 @@ python -m pytest tests -q
 # 前端构建
 cd frontend
 npm run build
-```
-
-已完成的验证包括：
-
+已完成验证包括：
 - 资料上传、解析和索引；
 - 双层问答与引用跳转；
 - 多轮追问与分支导图；
@@ -324,7 +225,7 @@ npm run build
 - 讲解、测验、错题转闪卡；
 - FSRS 复习与计划理由；
 - Android 调试 APK 构建；
-- Windows 后端可执行文件健康检查。
+- Windows 后端可执行文件健康检查
 
 ---
 
