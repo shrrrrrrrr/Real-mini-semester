@@ -12,17 +12,22 @@ from pydantic_settings import BaseSettings
 # 仓库后端根目录（backend/）
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 桌面安装包不能把学习记录写回只读的安装目录。打包启动器会传入
-# HANGYOU_DATA_DIR，将 SQLite 与原始资料放到用户可写的位置；Web 开发仍沿用 backend/data。
+# 数据目录解析优先级（覆盖点从粗到细）：
+# 1. HANGYOU_DATA_DIR —— 桌面安装包用户可写目录（SQLite 与 uploads 一起重定位）；
+# 2. HANGYOU_DB_PATH / HANGYOU_UPLOAD_DIR —— Docker/HF Spaces 精确覆盖
+#    （SQLite 落 /data 持久卷，uploads 可另行指定）；
+# 3. 默认 backend/data（本地开发）。
 RUNTIME_DATA_DIR = Path(os.environ.get("HANGYOU_DATA_DIR", str(BASE_DIR / "data"))).expanduser()
+DB_PATH_OVERRIDE = os.environ.get("HANGYOU_DB_PATH")
+UPLOAD_DIR_OVERRIDE = os.environ.get("HANGYOU_UPLOAD_DIR")
 
 
 class Settings(BaseSettings):
     # ---- 数据与存储 ----
     # SQLite 数据库文件路径：所有学习数据（课程/块/问答/测验/闪卡）的单文件主存储
-    db_path: Path = RUNTIME_DATA_DIR / "zhiyuan.db"
+    db_path: Path = Path(DB_PATH_OVERRIDE) if DB_PATH_OVERRIDE else RUNTIME_DATA_DIR / "zhiyuan.db"
     # 上传的原始文件保存目录：保留原件，支持"重新索引"而无需重传
-    upload_dir: Path = RUNTIME_DATA_DIR / "uploads"
+    upload_dir: Path = Path(UPLOAD_DIR_OVERRIDE) if UPLOAD_DIR_OVERRIDE else RUNTIME_DATA_DIR / "uploads"
 
     # ---- LLM（OpenAI 兼容协议，供应商可切换：DeepSeek / GLM / Qwen / OpenAI）----
     llm_base_url: str = "https://api.deepseek.com/v1"
@@ -43,8 +48,12 @@ class Settings(BaseSettings):
     # ---- 服务 ----
     host: str = "127.0.0.1"
     port: int = 8000
-    # Capacitor Android WebView 的来源通常为 http://localhost；保留开发端口以兼容 Web 调试。
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost,capacitor://localhost"
+    # CORS 白名单：本地开发 + 环境变量注入的生产前端域名（逗号分隔，
+    # 部署 Vercel 后把 https://xxx.vercel.app 加进 EXTRA_CORS_ORIGINS）
+    cors_origins: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost,capacitor://localhost"
+    )
+    extra_cors_origins: str = ""  # 部署环境追加（逗号分隔，支持通配符前缀校验见 main.py）
 
     class Config:
         env_file = BASE_DIR / ".env"

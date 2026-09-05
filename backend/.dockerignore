@@ -1,0 +1,16 @@
+# Docker 构建排除项（镜像瘦身）
+.pytest_cache
+__pycache__
+**/__pycache__
+*.pyc
+.env
+.env.example
+data/
+build/
+build-desktop/
+dist/
+packaging/
+tests/
+sql/
+HangyouServer.spec
+README.md

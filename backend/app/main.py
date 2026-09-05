@@ -36,10 +36,13 @@ def create_app() -> FastAPI:
     )
 
     # CORS：开发期前端 Vite 端口（生产同源部署则不触发）
+    # CORS：本地开发域名 + 环境变量 EXTRA_CORS_ORIGINS 注入的线上前端域名
+    # （部署 Vercel/HF Space 时把前端域名加进该变量，逗号分隔）
     origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+    extra = [o.strip() for o in (settings.extra_cors_origins or "").split(",") if o.strip()]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=origins,
+        allow_origins=origins + extra,
         allow_methods=["*"],
         allow_headers=["*"],
     )

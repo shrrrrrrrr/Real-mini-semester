@@ -17,3 +17,4 @@ numpy>=1.26
 # 测试
 pytest>=8.0
 pytest-asyncio>=0.23
+Pillow>=10.0                # 书库像素风占位封面生成
