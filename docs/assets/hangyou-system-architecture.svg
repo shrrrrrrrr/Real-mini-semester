@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040" role="img" aria-labelledby="title desc">
+  <title id="title">航友系统整体架构图</title>
+  <desc id="desc">前端 React 应用通过 HTTP 与 SSE 调用 FastAPI，后端处理资料解析、混合检索、学习闭环和本地数据；仅在用户配置后访问大模型 API。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0,0 L12,6 L0,12 Z" fill="#003F95"/></marker>
+    <style>
+      text { font-family: "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; fill: #14243A; }
+      .title { font-size: 38px; font-weight: 700; }
+      .subtitle { font-size: 18px; fill: #55708D; }
+      .layer { font-size: 23px; font-weight: 700; fill: #FFFFFF; }
+      .box-title { font-size: 25px; font-weight: 700; }
+      .body { font-size: 19px; }
+      .tag { font-size: 17px; font-weight: 700; fill: #003F95; }
+      .note { font-size: 17px; fill: #55708D; }
+      .line { stroke: #003F95; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+      .dash { stroke: #50A99A; stroke-width: 3; stroke-dasharray: 10 8; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1600" height="1040" fill="#F7FAFD"/>
+  <rect x="55" y="40" width="16" height="68" fill="#003F95"/>
+  <text class="title" x="94" y="75">航友系统整体架构</text>
+  <text class="subtitle" x="94" y="105">本地优先的课程资料智能问答与学习规划助手</text>
+
+  <!-- 前端层 -->
+  <rect x="55" y="155" width="1490" height="205" rx="16" fill="#E9F3FF" stroke="#79A8D7" stroke-width="2"/>
+  <rect x="55" y="155" width="190" height="205" rx="16" fill="#003F95"/>
+  <text class="layer" x="94" y="242">界面层</text><text class="layer" x="83" y="274">React 前端</text>
+  <rect x="280" y="184" width="235" height="140" rx="12" fill="#FFFFFF" stroke="#9DC2E7" stroke-width="2"/>
+  <text class="box-title" x="340" y="225">学习入口</text><text class="body" x="322" y="262">资料库 · 书库</text><text class="body" x="322" y="292">课程与文件管理</text>
+  <rect x="545" y="184" width="235" height="140" rx="12" fill="#FFFFFF" stroke="#9DC2E7" stroke-width="2"/>
+  <text class="box-title" x="610" y="225">学习交互</text><text class="body" x="580" y="262">问答 · 讲解 · 导图</text><text class="body" x="590" y="292">引用跳转与分支</text>
+  <rect x="810" y="184" width="235" height="140" rx="12" fill="#FFFFFF" stroke="#9DC2E7" stroke-width="2"/>
+  <text class="box-title" x="875" y="225">学习闭环</text><text class="body" x="847" y="262">测验 · 错题转卡</text><text class="body" x="852" y="292">复习计划与统计</text>
+  <rect x="1075" y="184" width="410" height="140" rx="12" fill="#FFFFFF" stroke="#9DC2E7" stroke-width="2"/>
+  <text class="box-title" x="1212" y="225">个人设置</text><text class="body" x="1120" y="262">LLM 接口显式配置 · 连接测试</text><text class="body" x="1150" y="292">系统工作过程与学习数据</text>
+
+  <path class="line" d="M800 380 L800 440"/><text class="tag" x="842" y="420">HTTP REST + SSE 流式响应</text>
+
+  <!-- 后端层 -->
+  <rect x="55" y="455" width="1490" height="265" rx="16" fill="#F0F8F6" stroke="#82C1B7" stroke-width="2"/>
+  <rect x="55" y="455" width="190" height="265" rx="16" fill="#087E8B"/>
+  <text class="layer" x="94" y="570">业务层</text><text class="layer" x="81" y="602">FastAPI</text>
+  <rect x="280" y="487" width="270" height="192" rx="12" fill="#FFFFFF" stroke="#9BD0C8" stroke-width="2"/>
+  <text class="box-title" x="350" y="530">接口与任务</text><text class="body" x="310" y="568">资料、书库、问答、讲解</text><text class="body" x="310" y="598">测验、复习、统计、配置</text><text class="body" x="330" y="628">后台生成任务与状态机</text>
+  <rect x="585" y="487" width="330" height="192" rx="12" fill="#FFFFFF" stroke="#9BD0C8" stroke-width="2"/>
+  <text class="box-title" x="673" y="530">资料理解管线</text><text class="body" x="620" y="568">多格式解析 → 语义分块</text><text class="body" x="620" y="598">MiniLM 向量 + BM25 检索</text><text class="body" x="620" y="628">RRF 融合 → 真实引用组装</text>
+  <rect x="950" y="487" width="270" height="192" rx="12" fill="#FFFFFF" stroke="#9BD0C8" stroke-width="2"/>
+  <text class="box-title" x="1015" y="530">AI 输出约束</text><text class="body" x="985" y="568">Prompt 契约 · JSON mode</text><text class="body" x="995" y="598">Pydantic 校验与重试</text><text class="body" x="990" y="628">资料依据 / 通识分区</text>
+  <rect x="1255" y="487" width="230" height="192" rx="12" fill="#FFFFFF" stroke="#9BD0C8" stroke-width="2"/>
+  <text class="box-title" x="1318" y="530">复习调度</text><text class="body" x="1290" y="568">FSRS 四档评分</text><text class="body" x="1284" y="598">冲刺 / 手动计划</text><text class="body" x="1300" y="628">计划理由生成</text>
+
+  <!-- 底层 -->
+  <path class="line" d="M660 742 L660 800"/><path class="line" d="M1070 742 L1070 800"/>
+  <rect x="55" y="815" width="905" height="175" rx="16" fill="#FFF8E9" stroke="#E7C36E" stroke-width="2"/>
+  <rect x="55" y="815" width="190" height="175" rx="16" fill="#B57900"/>
+  <text class="layer" x="94" y="887">数据层</text><text class="layer" x="83" y="919">本地优先</text>
+  <rect x="280" y="846" width="290" height="112" rx="12" fill="#FFFFFF" stroke="#E7C36E" stroke-width="2"/>
+  <text class="box-title" x="363" y="888">SQLite</text><text class="body" x="312" y="924">课程、对话、引用、测验、卡片</text>
+  <rect x="605" y="846" width="300" height="112" rx="12" fill="#FFFFFF" stroke="#E7C36E" stroke-width="2"/>
+  <text class="box-title" x="690" y="888">本地文件</text><text class="body" x="630" y="924">上传原件、解析片段与嵌入模型</text>
+  <rect x="1000" y="815" width="545" height="175" rx="16" fill="#F4EEFF" stroke="#B59ADB" stroke-width="2"/>
+  <text class="box-title" x="1145" y="865">外部 AI 服务</text><text class="body" x="1050" y="905">OpenAI 兼容 API（DeepSeek / GLM / Qwen 等）</text><text class="note" x="1072" y="942">仅在用户于“我的”页保存接口地址、模型和 API Key 后调用</text>
+  <path class="dash" d="M1220 680 C1330 735 1310 765 1270 805"/><text class="tag" x="1328" y="748">HTTPS</text>
+  <text class="note" x="55" y="1022">说明：资料、索引和学习记录保存在本机；模型只接收当前任务所需的检索上下文。</text>
+</svg>

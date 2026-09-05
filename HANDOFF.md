@@ -143,3 +143,6 @@
 
 - 基于用户提供的《软件开发文档模板.docx》完成 docs/航友软件开发文档 答辩版.docx。内容已按实际实现改写：本地 SQLite 架构、资料解析与 RRF、可信引用、LLM 配置边界、分支导图、书库、FSRS 计划、Windows/Android 现状和已完成验证。
 - 以 Word 成功导出 PDF 预览，确认文件可由 Word 打开。后续答辩前应补入真实课程资料截图、案例问答截图和检索评测数据。
+### 2026-09-05 — 第八轮：答辩架构示意图
+
+- 新增 docs/assets/hangyou-system-architecture.svg：按真实系统调用链绘制前端、FastAPI、资料理解管线、SQLite/本地文件与外部 AI 服务；使用 SVG 矢量中文字体和路径连线，可直接插入答辩文档或 PPT。
