@@ -213,6 +213,18 @@ export function ProfilePage() {
         </div>
       </div>
 
+      {/* ---- 开发者选项：展示真实链路，便于答辩时解释系统并非“直接问模型” ---- */}
+      <details className="panel reveal delay-3" style={{ padding: '18px 22px', marginBottom: '18px' }}>
+        <summary style={{ cursor: 'pointer', font: '700 7px/1 var(--mono)', color: 'var(--ink-strong)' }}>开发者选项 · 系统工作过程</summary>
+        <ol style={{ margin: '14px 0 0', paddingLeft: 22, display: 'grid', gap: 9, color: 'var(--ink)', lineHeight: 1.7 }}>
+          <li><b>上传与解析</b>：将 PDF、课件、文档等资料拆成可定位的小段，并保留文件名、页码或章节位置。</li>
+          <li><b>检索排序</b>：MiniLM 向量语义检索与 BM25 关键词检索并行，再用 RRF 融合结果，兼顾“意思相近”和“关键词命中”。</li>
+          <li><b>双层回答</b>：资料依据与模型通识分开生成和展示；开启“仅资料”时不输出通识补充。</li>
+          <li><b>后端引用</b>：引用由检索结果直接生成，不让模型虚构页码；点击角标可查看原文片段与定位。</li>
+          <li><b>学习闭环</b>：测验错题转为闪卡，FSRS 到期信息、掌握度和考试日期共同生成复习计划。</li>
+        </ol>
+      </details>
+
       {/* ---- 学习统计 ---- */}
       <div className="panel reveal delay-3" style={{ padding: '22px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>

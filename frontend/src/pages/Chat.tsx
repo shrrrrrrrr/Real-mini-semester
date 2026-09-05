@@ -4,7 +4,7 @@
  * + 就这提问预填跳转支持（location.state.prefill）。
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { api, errText, streamChat, type StreamCitation } from '../lib/api'
 import type { Book, Course, MessageInfo, SessionInfo, TreeNode } from '../lib/types'
@@ -35,7 +35,9 @@ export function ChatPage() {
   const [books, setBooks] = useState<Book[]>([])
   const [selectedBooks, setSelectedBooks] = useState<Set<string>>(new Set())
   const [showBookPicker, setShowBookPicker] = useState(false)
-  const [branchBanner, setBranchBanner] = useState<string | null>(null) // 追问反馈横幅
+  const [branchBanner, setBranchBanner] = useState<string | null>(null) // 分支上下文提示
+  // 当前分支最后一条 assistant 消息；非 null 时只渲染根到该消息的路径。
+  const [branchParentId, setBranchParentId] = useState<number | null>(null)
   const abortRef = useRef<AbortController | undefined>(undefined)
   const bottomRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
@@ -100,6 +102,8 @@ export function ChatPage() {
         const msgs = await api.get<MessageInfo[]>(`/sessions/${sid}/messages`)
         setMessages(msgs)
         setSessionId(sid)
+        setBranchParentId(null)
+        setBranchBanner(null)
       } catch (e) {
         toast(errText(e), 'error')
       }
@@ -135,7 +139,7 @@ export function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [messages, streaming])
 
-  async function ask(parentMessageId: number | null = null) {
+  async function ask(parentMessageId: number | null = branchParentId) {
     const q = question.trim()
     if (!q || !courseId || busy) return
     setBusy(true)
@@ -192,8 +196,11 @@ export function ChatPage() {
       // 结束后拉取完整消息（与库一致），并刷新树
       const sid = sessionId ?? currentSession
       if (sid) await loadMessages(sid)
-      if (latestAssistantId) setTreeVersion((v) => v + 1)
-      setBranchBanner(null) // 回答完成撤横幅
+      if (latestAssistantId) {
+        setTreeVersion((v) => v + 1)
+        setBranchParentId(latestAssistantId)
+        setBranchBanner('↳ 当前正在新的分支中；旧分支已在主对话中收起，可从导图随时返回')
+      }
     } catch (e) {
       if ((e as Error).name !== 'AbortError') toast(errText(e), 'error')
       setBranchBanner(null)
@@ -208,11 +215,13 @@ export function ChatPage() {
     }
   }
 
-  // 回答完成后"就此追问"：从该 assistant 消息分岔
+  // 在任意回答下“就此提问”只切换上下文，不会空发一条消息。
+  // 用户真正发送后，新消息才作为这个回答的子节点进入分支树。
   function branchFrom(messageId: number) {
-    // 输入框预聚焦，提示用户当前处于分支输入状态
+    const parent = messages.find((message) => message.id === messageId)
+    setBranchParentId(messageId)
     setQuestion('')
-    void ask(messageId)
+    setBranchBanner(`↳ 已从「${(parent?.content ?? '这条回答').slice(0, 24)}…」创建分支；输入问题后发送`)
   }
 
   function renameTreeNode(node: TreeNode) {
@@ -230,17 +239,33 @@ export function ChatPage() {
   }
 
   function jumpToNode(node: TreeNode) {
-    // 跳转：滚动到对应 user 消息（按 id 匹配 DOM）
+    // 跳转只定位，不立即改写分支。这样可先阅读旧对话，再在下方决定是否“就此提问”。
     setShowTree(false)
-    const el = document.getElementById(`msg-${node.id}`)
-    if (el) {
+    setBranchParentId(null)
+    setBranchBanner(null)
+    window.setTimeout(() => {
+      const el = document.getElementById(`msg-${node.id}`)
+      if (!el) return
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       el.animate(
         [{ boxShadow: '0 0 0 3px var(--yellow)' }, { boxShadow: '0 0 0 0 transparent' }],
-        { duration: 1600 },
+        { duration: 1000, easing: 'ease-out' },
       )
-    }
+    }, 0)
   }
+
+  // 分支模式下只保留“根 → 当前回答”的祖先链；未选分支时保留完整历史。
+  const visibleMessages = useMemo(() => {
+    if (branchParentId === null) return messages
+    const byId = new Map(messages.map((message) => [message.id, message]))
+    const path = new Set<number>()
+    let cursor: number | null = branchParentId
+    while (cursor !== null && !path.has(cursor)) {
+      path.add(cursor)
+      cursor = byId.get(cursor)?.parent_message_id ?? null
+    }
+    return messages.filter((message) => path.has(message.id))
+  }, [branchParentId, messages])
 
   const nickname = profile?.nickname ?? '我'
 
@@ -374,7 +399,7 @@ export function ChatPage() {
               <br />黄底 = 出自你的资料（带引用可核对）；灰底 = 模型通识。
             </p>
           )}
-          {messages.map((m) =>
+          {visibleMessages.map((m) =>
             m.role === 'user' ? (
               <div
                 key={m.id}
@@ -401,7 +426,7 @@ export function ChatPage() {
                     onClick={() => branchFrom(m.id)}
                     title="基于这个回答继续提问，长出新分支"
                   >
-                    <span style={{ fontSize: 15, lineHeight: 1 }}>↳</span> 就此追问
+                    <span style={{ fontSize: 15, lineHeight: 1 }}>↳</span> 就此提问
                   </button>
                 )}
               </div>
@@ -438,13 +463,13 @@ export function ChatPage() {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
-                void ask(null)
+                void ask()
               }
             }}
             style={{ flex: 1, minHeight: 56 }}
             disabled={busy || !courseId}
           />
-          <button className="btn btn-primary" onClick={() => void ask(null)} disabled={busy || !courseId}>
+          <button className="btn btn-primary" onClick={() => void ask()} disabled={busy || !courseId}>
             {busy ? '回答中…' : '提问'}
           </button>
         </div>

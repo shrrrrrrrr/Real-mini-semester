@@ -2,12 +2,12 @@
  * 课程资料库：建课程 → 多格式上传 → 解析状态轮询 → 范围勾选。
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, errText } from '../lib/api'
 import type { Course, DocumentInfo } from '../lib/types'
 import { useToast } from '../components/Toast'
-import { todayQuote } from '../lib/quotes'
+import { currentQuote, nextQuote, type Quote } from '../lib/quotes'
 
 const ACCEPT = '.pdf,.docx,.pptx,.epub,.txt,.md'
 const POLL_MS = 1500 // 解析状态轮询间隔
@@ -29,7 +29,8 @@ export function LibraryPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   const { toast } = useToast()
-  const quote = useMemo(() => todayQuote(), [])
+  // 今日签只在用户主动点击“换一条”时改变；刷新页面仍保留当天选中的内容。
+  const [quote, setQuote] = useState<Quote>(() => currentQuote())
 
   const loadCourses = useCallback(async () => {
     try {
@@ -157,7 +158,7 @@ export function LibraryPage() {
       <div className="panel reveal delay-1" style={{ padding: '12px 18px', marginBottom: '18px', display: 'flex', gap: '12px', alignItems: 'center' }}>
         <span style={{ fontSize: 24 }} aria-hidden="true">{quote.emoji}</span>
         <p style={{ margin: 0, font: '700 15px/1.6 var(--body)', color: 'var(--ink-strong)' }}>{quote.text}</p>
-        <span style={{ marginLeft: 'auto', font: "7px/1 var(--mono)", color: 'var(--muted)', flexShrink: 0 }}>今日签</span>
+        <button className="btn" type="button" onClick={() => setQuote((current) => nextQuote(current))} style={{ minHeight: 30, marginLeft: 'auto', padding: '5px 8px', fontSize: 11, flexShrink: 0 }}>↻ 换一条</button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 340px) 1fr', gap: '18px', alignItems: 'start' }}>

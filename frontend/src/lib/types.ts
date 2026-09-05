@@ -120,7 +120,7 @@ export interface ReviewPlanInfo {
   exam_date?: string | null
   daily_budget_minutes?: number | null
   scope: Record<string, unknown>
-  plan_days: { date: string; card_ids: string[]; est_minutes: number }[]
+  plan_days: { date: string; card_ids: string[]; est_minutes: number; reason: string }[]
   status: string
   created_at: string
 }
@@ -172,11 +172,13 @@ export interface Book {
   created_at: string
 }
 
+/** 对话导图节点：与后端 Message 的 parent_message_id 一一对应。 */
 export interface TreeNode {
   id: number
+  role: 'user' | 'assistant'
   content: string
   branch_name: string | null
-  answer_id: number | null
+  parent_message_id: number | null
   children: TreeNode[]
 }
 

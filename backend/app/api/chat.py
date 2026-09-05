@@ -105,17 +105,9 @@ async def chat_stream_endpoint(body: ChatAskV2, db: Session = Depends(get_db)):
     # ---- 分支路径历史（代替"最近 6 条"）----
     history_msgs: list[Message] = []
     if body.parent_message_id is not None:
-        # 从 parent 的 user 消息（即 parent 的兄弟 user 消息）上溯
-        # parent 是 assistant：其配对 user 的 parent 与 parent 相同
-        sibling_user = db.scalar(
-            select(Message).where(
-                Message.session_id == session.id,
-                Message.parent_message_id == body.parent_message_id,
-                Message.role == "user",
-            )
-        )
-        if sibling_user is not None:
-            history_msgs = _branch_path_messages(db, session.id, sibling_user.id)
+        # parent 本身就是用户选中的 assistant 回答。沿它的 parent 链回溯，
+        # 才能得到“根问题 → 当前回答”的完整上下文；不能查尚未创建的新 user 消息。
+        history_msgs = _branch_path_messages(db, session.id, body.parent_message_id)
     else:
         # 主干提问：取主干（无 parent 的消息）最近几条
         trunk = db.scalars(
@@ -304,10 +296,10 @@ def list_messages(session_id: str, db: Session = Depends(get_db)):
 
 @router.get("/sessions/{session_id}/tree")
 def session_tree(session_id: str, db: Session = Depends(get_db)):
-    """问题树（浮层图渲染）：节点 = user 消息，父子 = 追问关系。
+    """返回逐条消息树：每个节点都是一条真实消息，边即 parent_message_id。
 
-    返回嵌套结构：{id, content, branch_name, answer_id, children: [...]}
-    assistant 消息以 answer_id 附在对应 user 节点上（跳转定位用）。
+    这样导图与会话存储完全同构：用户消息可从 assistant 消息继续提问，
+    assistant 消息则挂在触发它的 user 消息下。前端不再把一轮问答压成一个节点。
     """
     session = db.get(ChatSession, session_id)
     if session is None:
@@ -318,57 +310,26 @@ def session_tree(session_id: str, db: Session = Depends(get_db)):
         .order_by(Message.created_at)
     ).all()
 
-    by_id = {m.id: m for m in msgs}
-    # user 消息节点；parent 可能指向 assistant（其配对 user 的 parent 一致）
-    nodes: dict[int, dict] = {}
+    nodes = {
+        message.id: {
+            "id": message.id,
+            "role": message.role,
+            "content": message.content,
+            "branch_name": message.branch_name,
+            "parent_message_id": message.parent_message_id,
+            "children": [],
+        }
+        for message in msgs
+    }
     roots: list[dict] = []
-
-    def attach_point(m: Message) -> list[dict]:
-        """找 m 应挂的兄弟列表：m.parent（assistant）的兄弟 user 消息的 children。"""
-        if m.parent_message_id is None:
-            return roots
-        parent = by_id.get(m.parent_message_id)
+    for message in msgs:
+        node = nodes[message.id]
+        parent = nodes.get(message.parent_message_id)
         if parent is None:
-            return roots
-        if parent.role == "assistant":
-            # assistant 的 parent = 触发它的 user；user 节点为挂载点
-            grand = by_id.get(parent.parent_message_id)
-            if grand is not None and grand.role == "user" and grand.id in nodes:
-                return nodes[grand.id]["children"]
-            return roots
-        if parent.role == "user" and parent.id in nodes:
-            return nodes[parent.id]["children"]
-        return roots
-
-    # 第一遍：建 user 节点（须先于 assistant 挂接，保证节点存在）
-    for m in msgs:
-        if m.role == "user":
-            nodes[m.id] = {
-                "id": m.id,
-                "content": m.content,
-                "branch_name": m.branch_name,
-                "answer_id": None,
-                "children": [],
-            }
-    # 第二遍：挂接
-    for m in msgs:
-        if m.role == "user":
-            attach_point(m).append(nodes[m.id])
+            roots.append(node)
         else:
-            # assistant 挂到触发它的 user 节点上（answer_id）或其分支的最近 user
-            if m.parent_message_id is not None and m.parent_message_id in nodes:
-                nodes[m.parent_message_id]["answer_id"] = m.id
-            else:
-                # parent 是 assistant（不常发生）——找其链上最近 user 节点
-                cur = by_id.get(m.parent_message_id) if m.parent_message_id else None
-                while cur is not None:
-                    if cur.id in nodes:
-                        nodes[cur.id]["answer_id"] = m.id
-                        break
-                    cur = by_id.get(cur.parent_message_id) if cur.parent_message_id else None
-
+            parent["children"].append(node)
     return {"session_id": session_id, "roots": roots}
-
 
 @router.patch("/messages/{message_id}/rename")
 def rename_branch(message_id: int, body: dict, db: Session = Depends(get_db)):

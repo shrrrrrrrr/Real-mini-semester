@@ -74,10 +74,10 @@ print("badge/name/combo saved:", badge.size, name_img.size, combo.size)
 # ---- 背景图：提亮 + 提饱和 + 像素化 ----
 
 
-def pixelate(src, dst, blocks=160, bright=1.25, sat=1.25):
+def pixelate(src, dst, blocks=220, bright=1.25, sat=1.25):
     """像素化流程：缩小→提亮提饱→放大（最近邻）→ 存 PNG。
 
-    blocks=160：横向 160 个色块（参考站像素颗粒度接近），
+    blocks=220：横向 220 个色块（保留像素风，同时让背景马赛克更细），
     提亮 25% + 提饱和 25%（用户要求"亮度和饱和度拉高一点"）。
     """
     img = Image.open(src).convert("RGB")

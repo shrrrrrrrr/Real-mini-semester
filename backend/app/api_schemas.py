@@ -263,6 +263,8 @@ class PlanDayOut(BaseModel):
     date: str
     card_ids: list[str]
     est_minutes: float
+    # 后端生成的可解释依据；前端用于“计划依据”展开区。
+    reason: str = "按你设定的每日学习量顺序安排"
 
 
 class ReviewPlanOut(BaseModel):

@@ -55,7 +55,7 @@
   --rail-width: 188px;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
-  --theme-transition-duration: 2100ms;
+  --theme-transition-duration: 760ms;
   color-scheme: light;
 }
 
@@ -274,7 +274,7 @@ textarea.pixel-input { min-height: 80px; resize: vertical; }
 
 /* 小节标签（mono 小字 + 黄底方框） */
 .section-label { margin-bottom: 18px; display: grid; grid-template-columns: auto auto 1fr; gap: 12px; align-items: center; }
-.section-label span { padding: 7px 8px; color: var(--ink-strong); border: 3px solid var(--line); background: var(--yellow); box-shadow: 3px 3px 0 var(--shadow); font: 7px/1 var(--mono); }
+.section-label span { width: 36px; height: 36px; padding: 0; color: transparent; border: 3px solid var(--line); background: #003f95 url('./assets/buaa-badge.png') center / 28px 28px no-repeat; box-shadow: 3px 3px 0 var(--shadow); font-size: 0; }
 .section-label p { margin: 0; color: var(--ink-strong); font: 700 19px/1 var(--pixel); }
 .section-label i { height: 3px; background: repeating-linear-gradient(90deg, var(--line-strong) 0 18px, transparent 18px 25px); }
 
@@ -376,6 +376,38 @@ textarea.pixel-input { min-height: 80px; resize: vertical; }
   transition-timing-function: var(--ease-in-out);
 }
 
+/* 计划依据、引用原文与对话分支：三个功能都采用短距离、可打断的过渡。 */
+.plan-reason-drawer { margin-top: 12px; border-top: 2px dashed var(--line-strong); }
+.plan-reason-drawer summary { padding-top: 10px; cursor: pointer; font: 700 12px/1.4 var(--body); color: var(--blue-strong); }
+.plan-reason-drawer p { margin: 8px 0 0; padding: 8px 10px; background: var(--panel); border-left: 3px solid var(--blue-strong); font-size: 13px; line-height: 1.7; }
+.citation-source-button { justify-self: start; padding: 6px 8px; border: 2px solid var(--line-strong); background: var(--blue); color: var(--ink-strong); font: 700 10px/1.4 var(--mono); cursor: pointer; }
+.citation-side-drawer { position: fixed; z-index: 100; top: 94px; right: 24px; width: min(370px, calc(100vw - 36px)); max-height: calc(100vh - 126px); overflow: auto; animation: citation-drawer-in 180ms var(--ease-out); }
+.citation-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-bottom: 2px dashed var(--line-strong); font: 700 12px/1 var(--mono); }
+.citation-drawer-head button { width: 28px; height: 28px; border: 2px solid var(--line); background: var(--panel-soft); cursor: pointer; font-size: 20px; line-height: 1; }
+.citation-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; }
+.citation-tabs button { min-width: 30px; min-height: 28px; border: 2px solid var(--line-strong); background: var(--panel-soft); cursor: pointer; font: 700 10px/1 var(--mono); }
+.citation-tabs button.active { background: var(--yellow); color: #082941; }
+.citation-note { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.branch-tree-panel { position: absolute; z-index: 60; right: 24px; top: 60px; bottom: 80px; width: min(820px, calc(100% - 48px)); padding: 12px; background: var(--panel-strong); }
+.branch-tree-empty { bottom: auto; width: 300px; }
+.branch-tree-empty p { margin: 0; color: var(--muted); line-height: 1.7; font-size: 13px; }
+.branch-tree-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 2px 2px 10px; }
+.branch-tree-head b { display: block; font: 700 12px/1 var(--mono); color: var(--ink-strong); }
+.branch-tree-head span { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
+.branch-tree-head .btn { min-height: 32px; padding: 6px 10px; font-size: 12px; }
+.branch-tree-scroll { width: 100%; height: calc(100% - 58px); overflow: auto; border: 2px dashed var(--line-strong); background: var(--panel); }
+.branch-tree-edge { fill: none; stroke: var(--line-strong); stroke-width: 2; }
+.branch-tree-node { cursor: pointer; transform-box: fill-box; transform-origin: center; transition: opacity 160ms ease, transform 160ms var(--ease-out); }
+.branch-tree-node:hover { opacity: .9; transform: translateY(-2px); }
+.branch-tree-node rect { stroke: var(--line-strong); stroke-width: 2.5; }
+.branch-tree-node rect.question { fill: var(--yellow); }
+.branch-tree-node rect.answer { fill: var(--panel-soft); }
+.branch-tree-node-title { fill: #082941; font: 700 10px/1 var(--mono); }
+.branch-tree-node-content { fill: #123a58; font: 700 12px/1 var(--body); }
+[data-theme='dark'] .branch-tree-node-title, [data-theme='dark'] .branch-tree-node-content { fill: #eaf8ff; }
+/* 主题的颜色、面板、文字与背景由同一个 760ms 时间轴协同淡化，避免背景先跳变。 */
+.theme-transitioning body, .theme-transitioning .site-header, .theme-transitioning .panel, .theme-transitioning .panel-soft, .theme-transitioning .btn, .theme-transitioning .pixel-input, .theme-transitioning .pixel-select, .theme-transitioning .answer-doc, .theme-transitioning .answer-general, .theme-transitioning .section-label span { transition: background-color var(--theme-transition-duration) var(--ease-in-out), color var(--theme-transition-duration) var(--ease-in-out), border-color var(--theme-transition-duration) var(--ease-in-out), box-shadow var(--theme-transition-duration) var(--ease-in-out); }
+@keyframes citation-drawer-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
 /* ---------- 6. 响应式 ---------- */
 @media (max-width: 1080px) {
   :root { --rail-width: 158px; }

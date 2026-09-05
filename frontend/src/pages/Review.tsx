@@ -290,6 +290,14 @@ export function ReviewPage() {
               今日计划：复习 {todayPlan.card_ids.length} 张（点击卡片区"载入今日计划"按计划队列复习）
             </p>
           )}
+          <details className="plan-reason-drawer">
+            <summary>计划依据</summary>
+            {plan.plan_days.map((day) => (
+              <p key={day.date}>
+                <b>{day.date.slice(5)}</b>：{day.reason}
+              </p>
+            ))}
+          </details>
         </div>
       )}
 

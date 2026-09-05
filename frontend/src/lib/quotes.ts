@@ -1,11 +1,4 @@
-/**
- * 今日签（每日一句）：按日期从语录池取一条。
- *
- * 【文案都在这里改】——直接编辑下方 QUOTES 数组即可增删改：
- * 每条 { text: 句子, emoji: 表情 }。日期 → 索引取模，同一天全站一致。
- * 风格参考《高中必刷题》各科语录（学习向短句）。
- */
-
+/** 今日签文案与当天选择逻辑：用户换出的内容会保留到当天结束。 */
 const QUOTES: { text: string; emoji: string }[] = [
   { text: '你现在翻的书，以后都是数不完的钱。', emoji: '📖' },
   { text: '刷题一时爽，一直刷题一直爽。', emoji: '✏️' },
@@ -49,9 +42,17 @@ const QUOTES: { text: string; emoji: string }[] = [
   { text: '少年不惧岁月长，彼方尚有荣光在。', emoji: '🌄' },
 ]
 
-/** 取今日语录：日期序号对池长取模，同一天稳定不变。 */
-export function todayQuote(): { text: string; emoji: string } {
-  const now = new Date()
-  const dayIndex = Math.floor(now.getTime() / 86400000)  // UTC 天序号
-  return QUOTES[dayIndex % QUOTES.length]
+export type Quote = (typeof QUOTES)[number]
+const QUOTE_STORAGE_KEY = 'hangyou:daily-quote'
+function storageKeyForToday(): string { return new Date().toISOString().slice(0, 10) }
+export function todayQuote(): Quote { const now = new Date(); return QUOTES[Math.floor(now.getTime() / 86400000) % QUOTES.length] }
+export function currentQuote(): Quote {
+  try { const saved = JSON.parse(localStorage.getItem(QUOTE_STORAGE_KEY) ?? 'null') as { date: string; index: number } | null; if (saved?.date === storageKeyForToday() && QUOTES[saved.index]) return QUOTES[saved.index] } catch { /* 忽略不可用的本地存储 */ }
+  return todayQuote()
+}
+export function nextQuote(current: Quote): Quote {
+  const candidates = QUOTES.filter((_, index) => index !== QUOTES.indexOf(current))
+  const next = candidates[Math.floor(Math.random() * candidates.length)] ?? todayQuote()
+  try { localStorage.setItem(QUOTE_STORAGE_KEY, JSON.stringify({ date: storageKeyForToday(), index: QUOTES.indexOf(next) })) } catch { /* 隐私模式下仅本次生效 */ }
+  return next
 }

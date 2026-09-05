@@ -2,7 +2,7 @@
  * 主题上下文：昼夜切换（移植自参考站的主题引擎）。
  *
  * 关键机制（与参考站一致）：
- * 1. 颜色变量经 @property 注册，切换时在根节点一次性插值（2100ms 全站同步变色）；
+ * 1. 颜色变量经 @property 注册，切换时在根节点一次性插值（760ms 全站同步变色）；
  * 2. 点击后先挂 .theme-transitioning 类，隔两帧再改 data-theme，
  *    保证背景/面板/文字在同一帧开始变色，避免逐层过渡的错拍感；
  * 3. 持久化到 localStorage，首次访问跟随系统 prefers-color-scheme；
@@ -14,7 +14,7 @@ import { createContext, useCallback, useContext, useEffect, useState } from 'rea
 type Theme = 'light' | 'dark'
 
 const THEME_KEY = 'zhiyuan-theme'
-const THEME_TRANSITION_MS = 2100
+const THEME_TRANSITION_MS = 760
 
 const ThemeContext = createContext<{
   theme: Theme

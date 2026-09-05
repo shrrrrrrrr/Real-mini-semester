@@ -6,7 +6,7 @@
  * - 流式渲染时逐 token 追加（isStreaming 控制光标）。
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { StreamCitation } from '../lib/api'
 
 interface Props {
@@ -47,13 +47,11 @@ export function AnswerBlock({ segments, citations, isStreaming }: Props) {
     return out
   }, [segments])
 
-  const scrollToCitation = (n: number) => {
-    const el = document.getElementById(`citation-${n}`) as HTMLDetailsElement | null
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-      el.open = true
-    }
-  }
+  // 右侧抽屉保存当前引用。角标不再只展开页面下方的 details，
+  // 这样答案与原文可以同时留在视野中，便于答辩演示“可核对”。
+  const [selectedCitation, setSelectedCitation] = useState<number | null>(null)
+  const scrollToCitation = (n: number) => setSelectedCitation(n)
+  const selected = citations?.find((citation) => citation.index === selectedCitation) ?? null
 
   if (segments.length === 0 && isStreaming) {
     return (
@@ -90,19 +88,29 @@ export function AnswerBlock({ segments, citations, isStreaming }: Props) {
       })}
 
       {citations && citations.length > 0 && (
-        <details className="citation-drawer">
-          <summary>
-            引用来源 · {citations.length} 处（点击核对原文）
-          </summary>
-          {citations.map((c) => (
-            <div key={c.index} id={`citation-${c.index}`} className="citation-item">
-              <span className="locator">
-                [{c.index}] 《{c.filename}》 · {c.locator}
-              </span>
-              <blockquote>{c.snippet}</blockquote>
-            </div>
-          ))}
-        </details>
+        <>
+          <button className="citation-source-button" type="button" onClick={() => setSelectedCitation((current) => current ?? citations[0].index)}>
+            引用来源 · {citations.length} 处
+          </button>
+          {selected && (
+            <aside className="citation-drawer citation-side-drawer" aria-label="引用原文抽屉">
+              <div className="citation-drawer-head">
+                <b>引用原文</b>
+                <button type="button" onClick={() => setSelectedCitation(null)} aria-label="关闭引用抽屉">×</button>
+              </div>
+              <div className="citation-tabs" aria-label="选择引用">
+                {citations.map((citation) => (
+                  <button key={citation.index} type="button" className={citation.index === selected.index ? 'active' : ''} onClick={() => setSelectedCitation(citation.index)}>[{citation.index}]</button>
+                ))}
+              </div>
+              <div className="citation-item">
+                <span className="locator">[{selected.index}] 《{selected.filename}》 · {selected.locator}</span>
+                <p className="citation-note">定位由后端检索结果生成，回答模型不能改写它。</p>
+                <blockquote>{selected.snippet}</blockquote>
+              </div>
+            </aside>
+          )}
+        </>
       )}
     </div>
   )

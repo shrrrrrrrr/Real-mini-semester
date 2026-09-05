@@ -36,20 +36,41 @@ def _urgency(card: Flashcard, today: dt.date, exam_date: dt.date) -> float:
     )
 
 
-def _chunk_days(cards: list[Flashcard], per_day: int, days_limit: int, today: dt.date):
-    """按序切分逐日队列；返回 [{date, card_ids, est_minutes}]。"""
+def _plan_reason(cards: list[Flashcard], target_date: dt.date, exam_date: dt.date | None) -> str:
+    """把排程依据转成用户可核对的短句，避免计划像黑箱。"""
+    reasons: list[str] = []
+    wrong_count = sum(card.origin == "quiz" for card in cards)
+    weak_count = sum(card.stability < 10 for card in cards)
+    due_count = sum(card.due.date() <= target_date for card in cards)
+    if wrong_count:
+        reasons.append(f"优先巩固 {wrong_count} 张测验错题")
+    if weak_count:
+        reasons.append(f"复习 {weak_count} 张掌握度较低的卡")
+    if due_count:
+        reasons.append(f"处理 {due_count} 张已到期或临近到期的卡")
+    if exam_date is not None:
+        days_left = max(0, (exam_date - target_date).days)
+        reasons.append(f"距离考试还有 {days_left} 天")
+    return "；".join(reasons) or "按你设定的每日学习量顺序安排"
+
+
+def _chunk_days(
+    cards: list[Flashcard], per_day: int, days_limit: int, today: dt.date, exam_date: dt.date | None = None
+):
+    """按序切分逐日队列，并把错题、到期与考试倒计时写入计划依据。"""
     out = []
-    step = max(1, (len(cards) + per_day - 1) // per_day) if per_day else 1
     for i in range(0, min(len(cards), per_day * days_limit), per_day):
         day_cards = cards[i : i + per_day]
+        target_date = today + dt.timedelta(days=len(out))
         out.append(
             {
-                "date": (today + dt.timedelta(days=len(out))).isoformat(),
+                "date": target_date.isoformat(),
                 "card_ids": [c.id for c in day_cards],
                 "est_minutes": round(len(day_cards) * AVG_CARD_SECONDS / 60),
+                "reason": _plan_reason(day_cards, target_date, exam_date),
             }
         )
-    return out or [{"date": today.isoformat(), "card_ids": [], "est_minutes": 0}]
+    return [{"date": today.isoformat(), "card_ids": [], "est_minutes": 0, "reason": "当前范围内没有可安排的卡片"}] if not out else out
 
 
 def _deactivate_plans(db: Session, course_id: str) -> None:
@@ -82,7 +103,7 @@ def create_sprint_plan(body: SprintPlanCreate, db: Session = Depends(get_db)):
     # 按紧迫度降序排列（错题卡 > 低稳定性卡 > 其他）
     ranked = sorted(cards, key=lambda c: _urgency(c, today, body.exam_date), reverse=True)
 
-    plan_days = _chunk_days(ranked, per_day, days_limit, today)
+    plan_days = _chunk_days(ranked, per_day, days_limit, today, body.exam_date)
 
     # 脆弱卡（紧迫度前 30%）考前 48h 二刷：追加到最后两天的其中一天
     fragile = ranked[: max(1, len(ranked) * 3 // 10)]
