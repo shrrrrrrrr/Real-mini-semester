@@ -139,3 +139,7 @@
 - **Android 工程**：在 `frontend/android/` 生成 Capacitor 工程，设置应用名“航友”、包名 `cn.buaa.hangyou`、北航校徽启动图标、网络权限与局域网 HTTP 访问；APK 已生成在 `frontend/android/app/build/outputs/apk/debug/app-debug.apk`（构建产物不入库）。本机 SDK 路径写入 `frontend/android/local.properties`，该文件已被 Git 忽略。
 - **Windows 安装器状态**：Electron 已完成 `win-unpacked` 应用目录封装，但 NSIS 安装器下载构建组件时被当前机器的 `self-signed certificate in certificate chain` 拦截。未关闭 TLS 校验绕过风险；网络证书恢复信任后，在 `desktop/electron/` 运行 `npm run dist:win` 即可补出安装程序。
 - **文档**：新增 `docs/INSTALLATION.md`，记录使用方式、Windows/Android 构建位置和局域网边界。
+### 2026-09-05 — 第七轮：答辩版软件开发文档
+
+- 基于用户提供的《软件开发文档模板.docx》完成 docs/航友软件开发文档 答辩版.docx。内容已按实际实现改写：本地 SQLite 架构、资料解析与 RRF、可信引用、LLM 配置边界、分支导图、书库、FSRS 计划、Windows/Android 现状和已完成验证。
+- 以 Word 成功导出 PDF 预览，确认文件可由 Word 打开。后续答辩前应补入真实课程资料截图、案例问答截图和检索评测数据。
