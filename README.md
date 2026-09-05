@@ -9,6 +9,8 @@
 
 > 愿你今天的每一次提问，都离真正理解更近一点。
 > <img width="1248" height="570" alt="image" src="https://github.com/user-attachments/assets/091c2e4f-b97b-49c4-96f0-bbbcc5922857" />
+<img width="1292" height="609" alt="image" src="https://github.com/user-attachments/assets/cbc63b34-e9b3-4ff5-848c-dec2bc8540ee" />
+我们设置了白天夜晚双模式，关爱你辛勤的眼睛❤️
 
 ---
 
