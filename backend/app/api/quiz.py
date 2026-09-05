@@ -61,12 +61,15 @@ def _generate_quiz_sync(task_id: str, course_id: str, count: int) -> None:
         if not chunks:
             fail_task(task_id, "该课程没有已就绪的资料，先去资料库上传并等待解析")
             return
+        from app.api.documents import doc_names_map
+
+        names = doc_names_map(db, course_id)
 
         # 出题检索：轮转取样保证章节覆盖（题量 × 3 + 余量）
         take = min(len(chunks), count * 3)
         step = max(1, len(chunks) // take)
         sampled = chunks[::step][:take]
-        context = prompts.build_context(sampled)
+        context = prompts.build_context(sampled, doc_names=names)
 
         messages = [
             {"role": "system", "content": prompts.QUIZ_SYSTEM},

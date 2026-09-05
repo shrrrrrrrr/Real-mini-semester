@@ -105,14 +105,32 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   outline-offset: 4px;
 }
 
-/* 背景场景：像素网格 + 夜间星星（轻量版：静态网格替代视频，保持像素氛围且零流量） */
-.scene-background {
-  position: fixed; z-index: -3; inset: 0; overflow: hidden; background: var(--sky);
-  background-image:
-    repeating-linear-gradient(0deg, rgba(7, 45, 68, 0.06) 0 1px, transparent 1px 6px),
-    repeating-linear-gradient(90deg, rgba(7, 45, 68, 0.05) 0 1px, transparent 1px 6px);
+/* 背景场景：白天/夜晚两张像素化照片图层交叉淡化（昼夜切换 2100ms 同步）
+   + 夜间星星 + 像素网格。图片由 scripts 预处理（提亮+提饱+像素化），
+   视觉机制与参考站 day-scene/night-scene 一致。 */
+.scene-background { position: fixed; z-index: -3; inset: 0; overflow: hidden; background: var(--sky); }
+.scene-bg-day,
+.scene-bg-night {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+  object-fit: cover; object-position: 50% 50%; image-rendering: pixelated;
+  transition: opacity var(--theme-transition-duration) var(--ease-in-out), filter var(--theme-transition-duration) var(--ease-in-out);
+}
+.scene-bg-day { opacity: 1; filter: saturate(1.15) brightness(1.08) contrast(1.02); }
+.scene-bg-night { opacity: 0; filter: saturate(1.2) brightness(0.9) contrast(1.05); }
+[data-theme='dark'] .scene-bg-day { opacity: 0; }
+[data-theme='dark'] .scene-bg-night { opacity: 1; }
+/* 内容可读性：背景上叠一层随主题变化的半透明纱 */
+.scene-veil {
+  position: absolute; inset: 0; background: linear-gradient(180deg, rgba(184, 221, 243, 0.55), rgba(184, 221, 243, 0.75));
   transition: background var(--theme-transition-duration) var(--ease-in-out);
 }
+[data-theme='dark'] .scene-veil { background: linear-gradient(180deg, rgba(16, 43, 61, 0.55), rgba(16, 43, 61, 0.8)); }
+.scene-grid {
+  position: absolute; inset: 0; opacity: 0.14; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(7, 45, 68, 0.18) 0 1px, transparent 1px 5px), repeating-linear-gradient(90deg, rgba(7, 45, 68, 0.12) 0 1px, transparent 1px 5px);
+  transition: opacity var(--theme-transition-duration) var(--ease-in-out);
+}
+[data-theme='dark'] .scene-grid { opacity: 0.2; }
 .scene-stars { position: absolute; inset: 0; opacity: 0; pointer-events: none; transition: opacity var(--theme-transition-duration) var(--ease-in-out); }
 .scene-stars i {
   position: absolute; width: 4px; height: 4px; display: block; opacity: 0.2;

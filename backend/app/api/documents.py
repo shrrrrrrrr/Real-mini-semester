@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from app.api_schemas import CourseCreate, CourseOut, DocumentOut, DocumentPatch
@@ -186,7 +186,7 @@ def reindex_document(doc_id: str, db: Session = Depends(get_db)):
 def select_indexed_chunks(db: Session, course_id: str):
     return db.scalars(
         select(Chunk)
-        .join(Document, Chunk.document_id == Document.id)
+        .join(Document, and_(Chunk.document_id == Document.id, Chunk.owner == "doc"))
         .where(
             Document.course_id == course_id,
             Document.include_in_rag.is_(True),
@@ -194,3 +194,13 @@ def select_indexed_chunks(db: Session, course_id: str):
         )
         .order_by(Chunk.document_id, Chunk.chunk_index)
     ).all()
+
+
+def doc_names_map(db: Session, course_id: str) -> dict[str, str]:
+    """课程资料的 document_id → 文件名映射（检索引用展示用）。"""
+    docs = db.scalars(
+        select(Document).where(
+            Document.course_id == course_id, Document.status == "indexed"
+        )
+    ).all()
+    return {d.id: d.filename for d in docs}

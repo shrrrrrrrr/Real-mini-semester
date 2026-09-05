@@ -1,23 +1,36 @@
 /**
  * 应用外壳：左侧像素风导航栏（桌面）/ 底栏（移动）+ 场景背景 + 路由出口。
+ *
+ * 品牌呈现（北航元素）：
+ * - 站名"航友"（知源更名，用户确认）；
+ * - 左上角北航校徽（assets/buaa-badge.png，程序抠图产物）；
+ * - 昼夜背景：白天春景 / 夜晚景色（assets/bg-day.png / bg-night.png，像素化处理）。
  */
 
 import { NavLink, Outlet } from 'react-router-dom'
+import badgeUrl from '../assets/buaa-badge.png'
+import bgDayUrl from '../assets/bg-day.png'
+import bgNightUrl from '../assets/bg-night.png'
 import { ThemeToggle } from './ThemeToggle'
 
 const NAV_ITEMS = [
   { to: '/library', label: '资料库', num: '01' },
-  { to: '/chat', label: '问答', num: '02' },
-  { to: '/explain', label: '讲解', num: '03' },
-  { to: '/quiz', label: '测验', num: '04' },
-  { to: '/review', label: '复习', num: '05' },
+  { to: '/books', label: '书库', num: '02' },
+  { to: '/chat', label: '问答', num: '03' },
+  { to: '/explain', label: '讲解', num: '04' },
+  { to: '/quiz', label: '测验', num: '05' },
+  { to: '/review', label: '复习', num: '06' },
 ]
 
 export function AppShell() {
   return (
     <>
-      {/* 像素网格背景 + 夜间星星（昼夜切换时渐显） */}
+      {/* 昼夜场景：两张像素化照片交叉淡化（2100ms 与全局颜色插值同步） */}
       <div className="scene-background" aria-hidden="true">
+        <img className="scene-bg-day" src={bgDayUrl} alt="" />
+        <img className="scene-bg-night" src={bgNightUrl} alt="" />
+        <span className="scene-veil"></span>
+        <span className="scene-grid"></span>
         <span className="scene-stars">
           {Array.from({ length: 18 }, (_, i) => (
             <i key={i} />
@@ -28,10 +41,14 @@ export function AppShell() {
       <header className="site-header">
         <div className="brand">
           <span className="brand-avatar" aria-hidden="true">
-            知
+            <img
+              src={badgeUrl}
+              alt="北航校徽"
+              style={{ width: '100%', height: '100%', objectFit: 'contain', imageRendering: 'auto', padding: 2 }}
+            />
           </span>
           <span className="brand-copy">
-            <strong>知源</strong>
+            <strong>航友</strong>
           </span>
         </div>
 

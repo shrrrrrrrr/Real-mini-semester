@@ -2,11 +2,12 @@
  * 课程资料库：建课程 → 多格式上传 → 解析状态轮询 → 范围勾选。
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, errText } from '../lib/api'
 import type { Course, DocumentInfo } from '../lib/types'
 import { useToast } from '../components/Toast'
+import { todayQuote } from '../lib/quotes'
 
 const ACCEPT = '.pdf,.docx,.pptx,.epub,.txt,.md'
 const POLL_MS = 1500 // 解析状态轮询间隔
@@ -28,6 +29,7 @@ export function LibraryPage() {
   const fileRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
   const { toast } = useToast()
+  const quote = useMemo(() => todayQuote(), [])
 
   const loadCourses = useCallback(async () => {
     try {
@@ -149,6 +151,13 @@ export function LibraryPage() {
         <span>COURSE.LIB</span>
         <p>课程资料库</p>
         <i></i>
+      </div>
+
+      {/* 今日签：每日一句（文案在 src/lib/quotes.ts 改） */}
+      <div className="panel reveal delay-1" style={{ padding: '12px 18px', marginBottom: '18px', display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <span style={{ fontSize: 24 }} aria-hidden="true">{quote.emoji}</span>
+        <p style={{ margin: 0, font: '700 15px/1.6 var(--body)', color: 'var(--ink-strong)' }}>{quote.text}</p>
+        <span style={{ marginLeft: 'auto', font: "7px/1 var(--mono)", color: 'var(--muted)', flexShrink: 0 }}>今日签</span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(240px, 340px) 1fr', gap: '18px', alignItems: 'start' }}>

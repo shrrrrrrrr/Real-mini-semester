@@ -10,7 +10,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import chat, documents, explain, flashcards, profile, quiz, review_plans, stats, tasks
+from app.api import books, chat, documents, explain, flashcards, profile, quiz, review_plans, stats, tasks
 from app.config import settings
 from app.db import init_db
 
@@ -45,6 +45,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(documents.router, prefix="/api")
+    app.include_router(books.router, prefix="/api")
     app.include_router(chat.router, prefix="/api")
     app.include_router(explain.router, prefix="/api")
     app.include_router(quiz.router, prefix="/api")

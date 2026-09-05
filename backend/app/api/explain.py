@@ -67,7 +67,9 @@ def _generate_outline_sync(task_id: str, course_id: str | None, topic: str) -> N
             if docs:
                 doc_list = "\n".join(f"- {d.filename}（{d.chunk_count} 块）" for d in docs)
                 chunks = select_indexed_chunks(db, course_id)
-                index = build_course_index(chunks)
+                from app.api.documents import doc_names_map
+
+                index = build_course_index(chunks, doc_names=doc_names_map(db, course_id))
 
         messages = [
             {"role": "system", "content": prompts.EXPLAIN_SYSTEM},
@@ -180,7 +182,17 @@ def _expand_node_sync(task_id: str, explain_id: str, sec_i: int, node_i: int) ->
                 .filter(Chunk.id.in_(node["linked_chunk_ids"]))
                 .all()
             )
-            context = prompts.build_context(chunks)
+            # 片段可能来自课程资料或书库：按 owner 分组取显示名
+            names: dict[str, str] = {}
+            doc_ids = [c.document_id for c in chunks if c.owner == "doc"]
+            book_ids = [c.document_id for c in chunks if c.owner == "book"]
+            if doc_ids:
+                for d in db.query(Document).filter(Document.id.in_(doc_ids)).all():
+                    names[d.id] = d.filename
+            if book_ids:
+                for b in db.query(Book).filter(Book.id.in_(book_ids)).all():
+                    names[b.id] = b.title
+            context = prompts.build_context(chunks, doc_names=names)
 
         user = f"【课程资料片段】\n{context or '（无）'}\n\n【要讲解的知识点】{sec['title']} —— {node['title']}"
         try:
@@ -255,4 +267,4 @@ def delete_explain(explain_id: str, db: Session = Depends(get_db)):
 
 # 导入放底部避免循环依赖（documents ↔ explain）
 from app.db import SessionLocal  # noqa: E402
-from app.models import Chunk, Course  # noqa: E402
+from app.models import Book, Chunk, Course  # noqa: E402

@@ -159,6 +159,19 @@ export interface GenTaskInfo {
   finished_at: string | null
 }
 
+export interface Book {
+  id: string
+  title: string
+  cover: string | null
+  filename: string
+  file_type: string
+  status: string
+  fail_reason?: string | null
+  page_count: number
+  chunk_count: number
+  created_at: string
+}
+
 export interface TreeNode {
   id: number
   content: string

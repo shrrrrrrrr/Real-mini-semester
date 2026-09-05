@@ -7,56 +7,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { api, errText, streamChat, type StreamCitation } from '../lib/api'
-import type { Course, MessageInfo, SessionInfo, TreeNode } from '../lib/types'
+import type { Book, Course, MessageInfo, SessionInfo, TreeNode } from '../lib/types'
 import { AnswerBlock } from '../components/AnswerBlock'
+import { MindMapOverlay } from '../components/MindMapOverlay'
 import { useToast } from '../components/Toast'
 
 interface StreamingState {
   segments: { layer: 'doc' | 'general'; text: string }[]
   citations: StreamCitation[] | null
   active: boolean
-}
-
-/** 树节点组件：点击跳转、右键重命名。 */
-function TreeItem({
-  node,
-  depth,
-  onJump,
-  onRename,
-}: {
-  node: TreeNode
-  depth: number
-  onJump: (n: TreeNode) => void
-  onRename: (n: TreeNode) => void
-}) {
-  const label = node.branch_name ?? node.content.slice(0, 24)
-  return (
-    <div style={{ paddingLeft: depth * 14 }}>
-      <div
-        className="tree-node"
-        style={{
-          display: 'flex', alignItems: 'center', gap: 6, padding: '6px 8px', margin: '3px 0',
-          border: '2px solid var(--line)', background: 'var(--panel-soft)',
-          cursor: 'pointer', fontSize: 12, fontWeight: 700,
-        }}
-        onClick={() => onJump(node)}
-        onContextMenu={(e) => {
-          e.preventDefault()
-          onRename(node)
-        }}
-        title={`${label}\n点击跳转 · 右键重命名`}
-      >
-        <span style={{ color: 'var(--blue-strong)' }}>Q</span>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
-        {node.children.length > 0 && (
-          <span className="badge" style={{ marginLeft: 'auto' }}>{node.children.length}</span>
-        )}
-      </div>
-      {node.children.map((c) => (
-        <TreeItem key={c.id} node={c} depth={depth + 1} onJump={onJump} onRename={onRename} />
-      ))}
-    </div>
-  )
 }
 
 export function ChatPage() {
@@ -73,9 +32,12 @@ export function ChatPage() {
   const [showTree, setShowTree] = useState(false)
   const [treeVersion, setTreeVersion] = useState(0)
   const [profile, setProfile] = useState<{ nickname: string; avatar: string | null } | null>(null)
+  const [books, setBooks] = useState<Book[]>([])
+  const [selectedBooks, setSelectedBooks] = useState<Set<string>>(new Set())
+  const [showBookPicker, setShowBookPicker] = useState(false)
+  const [branchBanner, setBranchBanner] = useState<string | null>(null) // 追问反馈横幅
   const abortRef = useRef<AbortController | undefined>(undefined)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const treePanelRef = useRef<HTMLDivElement>(null)
   const location = useLocation()
   const { toast } = useToast()
 
@@ -94,6 +56,18 @@ export function ChatPage() {
       }
     })()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 书库列表（勾选参与检索）
+  useEffect(() => {
+    void (async () => {
+      try {
+        const list = await api.get<Book[]>('/books')
+        setBooks(list.filter((b) => b.status === 'indexed'))
+      } catch {
+        /* 书库为空 */
+      }
+    })()
+  }, [])
 
   // 昵称/头像（对话气泡显示"我"的身份）
   useEffect(() => {
@@ -146,17 +120,16 @@ export function ChatPage() {
     })()
   }, [sessionId, showTree, treeVersion])
 
-  // 点击浮层外关闭
+  // 点击浮层外关闭（MindMapOverlay 自带；此 effect 兼容书库选择器）
   useEffect(() => {
-    if (!showTree) return
+    if (!showBookPicker) return
     const onDown = (e: MouseEvent) => {
-      if (treePanelRef.current && !treePanelRef.current.contains(e.target as Node)) {
-        setShowTree(false)
-      }
+      const t = e.target as HTMLElement
+      if (!t.closest('[data-book-picker]')) setShowBookPicker(false)
     }
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
-  }, [showTree])
+  }, [showBookPicker])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -168,12 +141,25 @@ export function ChatPage() {
     setBusy(true)
     setQuestion('')
     setStreaming({ segments: [], citations: null, active: true })
+    // 追问反馈横幅：处于分支上下文时黄条常驻提示（用户确认的改进）
+    if (parentMessageId) {
+      const parentMsg = messages.find((m) => m.id === parentMessageId)
+      const parentQ = messages.find((m) => m.id === parentMessageId - 1)
+      setBranchBanner(`↳ 分支追问中（基于：${(parentQ?.content ?? parentMsg?.content ?? '上一回答').slice(0, 24)}…）`)
+    }
     abortRef.current = new AbortController()
     const currentSession = sessionId
     try {
       let latestAssistantId: number | null = null
       await streamChat(
-        { course_id: courseId, session_id: currentSession, question: q, parent_message_id: parentMessageId, docs_only: docsOnly },
+        {
+          course_id: courseId,
+          session_id: currentSession,
+          question: q,
+          parent_message_id: parentMessageId,
+          docs_only: docsOnly,
+          book_ids: Array.from(selectedBooks), // 书库勾选并入检索
+        },
         {
           onSession: (sid, title) => {
             setSessionId(sid)
@@ -207,8 +193,10 @@ export function ChatPage() {
       const sid = sessionId ?? currentSession
       if (sid) await loadMessages(sid)
       if (latestAssistantId) setTreeVersion((v) => v + 1)
+      setBranchBanner(null) // 回答完成撤横幅
     } catch (e) {
       if ((e as Error).name !== 'AbortError') toast(errText(e), 'error')
+      setBranchBanner(null)
     } finally {
       setStreaming(null)
       setBusy(false)
@@ -222,6 +210,8 @@ export function ChatPage() {
 
   // 回答完成后"就此追问"：从该 assistant 消息分岔
   function branchFrom(messageId: number) {
+    // 输入框预聚焦，提示用户当前处于分支输入状态
+    setQuestion('')
     void ask(messageId)
   }
 
@@ -295,43 +285,86 @@ export function ChatPage() {
 
       {/* 右：对话区（独立滚动，页面不再整体滚动） */}
       <div className="panel reveal delay-1" style={{ flex: 1, padding: '20px', display: 'flex', flexDirection: 'column', minHeight: 0, position: 'relative' }}>
-        {/* 浮层树按钮（右侧边缘常驻） */}
-        <button
-          className="btn"
-          style={{ position: 'absolute', right: -14, top: '30%', zIndex: 30, minHeight: 60, width: 44, padding: 6, writingMode: 'vertical-rl' }}
-          onClick={() => {
-            if (!sessionId) {
-              toast('先提一个问题，才有分支树可看', 'error')
-              return
-            }
-            setShowTree((v) => !v)
-          }}
-          title="分支树（问题鸟瞰图）"
-          aria-label="打开分支树"
-        >
-          树
-        </button>
-
-        {/* 分支树浮层（思源式：右侧弹出、点外关闭） */}
-        {showTree && (
-          <div
-            ref={treePanelRef}
-            className="panel"
-            style={{
-              position: 'absolute', right: 20, top: 16, bottom: 16, width: 300, zIndex: 40,
-              padding: '14px', overflow: 'auto', background: 'var(--panel-strong)',
+        {/* 顶部工具条：导图开关 + 书库勾选（与"提问"按钮同款样式的常驻按钮） */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap', position: 'relative' }}>
+          <button
+            className="btn"
+            style={showTree ? { background: 'var(--yellow)', color: '#0b3149' } : undefined}
+            onClick={() => {
+              if (!sessionId) {
+                toast('先提一个问题，才有思维导图可看', 'error')
+                return
+              }
+              setShowTree((v) => !v)
             }}
+            title="问题思维导图（分支鸟瞰）"
           >
-            <b style={{ font: "7px/1 var(--mono)", color: 'var(--ink-strong)' }}>问题分支树</b>
-            <p style={{ color: 'var(--muted)', fontSize: 11, margin: '4px 0 10px' }}>点击跳转 · 右键重命名分支</p>
-            {tree && tree.length > 0 ? (
-              tree.map((n) => (
-                <TreeItem key={n.id} node={n} depth={0} onJump={jumpToNode} onRename={renameTreeNode} />
-              ))
-            ) : (
-              <p style={{ color: 'var(--muted)', fontSize: 12 }}>暂无分支。回答完成后点"就此追问"长出新分支。</p>
+            🌳 导图
+          </button>
+
+          {/* 书库勾选（全局图书并入检索范围） */}
+          <div data-book-picker style={{ position: 'relative' }}>
+            <button
+              className="btn"
+              style={showBookPicker || selectedBooks.size > 0 ? { background: 'var(--mint)', color: '#102f46' } : undefined}
+              onClick={() => setShowBookPicker((v) => !v)}
+              title="勾选书库图书，提问时一起检索"
+            >
+              📚 书库{selectedBooks.size > 0 ? ` ×${selectedBooks.size}` : ''}
+            </button>
+            {showBookPicker && (
+              <div
+                className="panel"
+                style={{ position: 'absolute', top: '110%', left: 0, zIndex: 50, width: 280, padding: '12px', background: 'var(--panel-strong)' }}
+              >
+                <b style={{ font: "7px/1 var(--mono)", color: 'var(--ink-strong)' }}>查这些书</b>
+                {books.length === 0 ? (
+                  <p style={{ color: 'var(--muted)', fontSize: 12, margin: '8px 0 0' }}>
+                    书库还没有已就绪的书——去「书库」页上传教材。
+                  </p>
+                ) : (
+                  <div style={{ display: 'grid', gap: '6px', marginTop: '8px' }}>
+                    {books.map((b) => (
+                      <label key={b.id} style={{ display: 'flex', gap: '8px', alignItems: 'center', cursor: 'pointer', padding: '4px 6px', border: '2px solid var(--line)', background: selectedBooks.has(b.id) ? 'var(--mint)' : 'var(--panel-soft)' }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedBooks.has(b.id)}
+                          onChange={() =>
+                            setSelectedBooks((prev) => {
+                              const next = new Set(prev)
+                              if (next.has(b.id)) next.delete(b.id)
+                              else next.add(b.id)
+                              return next
+                            })
+                          }
+                          style={{ width: 15, height: 15, accentColor: 'var(--blue-strong)' }}
+                        />
+                        <span style={{ fontSize: 12, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.title}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
+
+          {/* 追问反馈横幅：明确提示当前处于分支上下文 */}
+          {branchBanner && (
+            <div
+              className="badge"
+              style={{
+                alignSelf: 'center', padding: '8px 12px', fontSize: 11, fontWeight: 700,
+                background: 'var(--yellow)', color: '#0b3149', border: '2px solid var(--line)',
+              }}
+            >
+              {branchBanner}
+            </div>
+          )}
+        </div>
+
+        {/* 思维导图浮层（SVG 横向树：点外关闭、节点跳转、右键重命名） */}
+        {showTree && tree && (
+          <MindMapOverlay roots={tree} onJump={jumpToNode} onRename={renameTreeNode} onClose={() => setShowTree(false)} />
         )}
 
         <div style={{ flex: 1, overflow: 'auto', display: 'grid', gap: '16px', alignContent: 'start', minHeight: 0 }}>
@@ -360,15 +393,15 @@ export function ChatPage() {
             ) : (
               <div key={m.id} style={{ maxWidth: '92%' }}>
                 <AnswerBlock segments={m.segments ?? [{ layer: 'general', text: m.content }]} citations={m.citations} />
-                {/* 就此追问：从该答案分出新分支 */}
+                {/* 就此追问：短宽按钮（用户反馈原箭头太细长不明显） */}
                 {!streaming && !busy && (
                   <button
-                    className="btn"
-                    style={{ minHeight: 30, padding: '4px 10px', fontSize: 12, marginTop: 8 }}
+                    className="btn btn-warn"
+                    style={{ minHeight: 38, padding: '6px 16px', fontSize: 13, marginTop: 10, gap: 6 }}
                     onClick={() => branchFrom(m.id)}
-                    title="从这个问题继续追问，生成新分支"
+                    title="基于这个回答继续提问，长出新分支"
                   >
-                    ↳ 就此追问
+                    <span style={{ fontSize: 15, lineHeight: 1 }}>↳</span> 就此追问
                   </button>
                 )}
               </div>

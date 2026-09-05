@@ -5,6 +5,7 @@ import './index.css'
 import { AppShell } from './components/AppShell'
 import { ToastProvider } from './components/Toast'
 import { ThemeProvider } from './lib/theme'
+import { BooksPage } from './pages/Books'
 import { ChatPage } from './pages/Chat'
 import { ExplainPage } from './pages/Explain'
 import { LibraryPage } from './pages/Library'
@@ -21,6 +22,7 @@ createRoot(document.getElementById('root')!).render(
             <Route element={<AppShell />}>
               <Route path="/" element={<Navigate to="/library" replace />} />
               <Route path="/library" element={<LibraryPage />} />
+              <Route path="/books" element={<BooksPage />} />
               <Route path="/chat" element={<ChatPage />} />
               <Route path="/explain" element={<ExplainPage />} />
               <Route path="/quiz" element={<QuizPage />} />

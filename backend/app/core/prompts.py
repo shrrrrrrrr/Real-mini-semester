@@ -142,17 +142,19 @@ class QuizSpec(BaseModel):
     questions: list[QuizQuestionSpec] = Field(min_length=1)
 
 
-def build_context(chunks: list) -> str:
+def build_context(chunks: list, doc_names: dict[str, str] | None = None) -> str:
     """把检索结果组装为带编号的上下文文本（编号即 [n] 引用编号）。
 
-    兼容两种输入：ORM Chunk（带 document 关系）与 RetrievedChunk
-    （检索管线产物，自带 filename/locator 字段）。
+    兼容两种输入：
+    - RetrievedChunk（检索管线产物，自带 filename/locator 字段）；
+    - ORM Chunk（document_id 通过 doc_names 映射显示名）。
     """
+    names = doc_names or {}
     lines = []
     for i, c in enumerate(chunks, start=1):
         filename = getattr(c, "filename", None)
-        if filename is None:  # ORM Chunk：从关系取文件名
-            filename = c.document.filename if c.document else "资料"
+        if filename is None:  # ORM Chunk：查映射表（文件名或书名）
+            filename = names.get(c.document_id, "资料")
         locator = getattr(c, "locator_value", None) or getattr(c, "locator", "")
         content = c.content
         lines.append(f"[{i}] 《{filename}》{locator}\n{content}")

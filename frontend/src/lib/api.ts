@@ -89,6 +89,7 @@ export async function streamChat(
     question: string
     parent_message_id?: number | null
     docs_only?: boolean
+    book_ids?: string[]
   },
   handlers: StreamHandlers,
   signal?: AbortSignal,

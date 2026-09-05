@@ -143,24 +143,31 @@ def rrf_fuse(rankings: list[list[int]], k: int | None = None) -> dict[int, float
 
 
 class CourseIndex:
-    """课程级检索索引：一次构建、会话内复用。
+    """检索索引：一次构建、会话内复用。
 
-    持有 BM25 语料与向量矩阵，供同一课程的多次查询复用
+    持有 BM25 语料与向量矩阵，供同一检索范围的多次查询复用
     （问答、测验、讲解挂接共享检索入口）。
+    chunk 来源（owner 字段区分）：
+    - doc：课程资料（filename 由调用方通过 doc_names 提供）；
+    - book：书库图书（filename 由调用方通过 doc_names 提供书名）。
     """
 
-    def __init__(self, chunks: list):
-        """chunks: 含 embedding 字段的 ORM Chunk 列表（已过滤 include_in_rag）。"""
-        self.entries = [
-            {
-                "chunk_id": c.id,
-                "document_id": c.document_id,
-                "filename": c.document.filename if c.document else "",
-                "locator": c.locator_value,
-                "content": c.content,
-            }
-            for c in chunks
-        ]
+    def __init__(self, chunks: list, doc_names: dict[str, str] | None = None):
+        """chunks: ORM Chunk 列表；doc_names: document_id → 显示名（文件名/书名）。"""
+        names = doc_names or {}
+        entries = []
+        for c in chunks:
+            owner = getattr(c, "owner", "doc")
+            entries.append(
+                {
+                    "chunk_id": c.id,
+                    "document_id": c.document_id,
+                    "filename": names.get(c.document_id, ""),
+                    "locator": c.locator_value,
+                    "content": c.content,
+                }
+            )
+        self.entries = entries
         self._bm25: BM25Okapi | None = None
         self._matrix: np.ndarray | None = None
         if self.entries:
@@ -215,6 +222,10 @@ class CourseIndex:
         ]
 
 
-def build_course_index(db_chunks: list) -> CourseIndex:
-    """从 ORM Chunk 列表构建课程索引（供 API 层调用）。"""
-    return CourseIndex(db_chunks)
+def build_course_index(db_chunks: list, doc_names: dict[str, str] | None = None) -> CourseIndex:
+    """从 ORM Chunk 列表构建索引（供 API 层调用）。
+
+    doc_names：document_id → 显示名（课程文件名或书库书名），
+    调用方负责收集（检索层不感知 Document/Book 实体）。
+    """
+    return CourseIndex(db_chunks, doc_names=doc_names)

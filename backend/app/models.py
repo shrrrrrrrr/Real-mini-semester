@@ -145,8 +145,11 @@ class Document(Base):
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     course: Mapped["Course"] = relationship(back_populates="documents")
+    # chunks.owner='doc' 时指向本资料（显式 join 条件：document_id 无 FK 约束，
+    # 因书库场景同一列存 books.id）
     chunks: Mapped[list["Chunk"]] = relationship(
-        back_populates="document", cascade="all, delete-orphan"
+        primaryjoin="and_(Document.id == foreign(Chunk.document_id), Chunk.owner == 'doc')",
+        cascade="all, delete-orphan",
     )
 
 
@@ -155,6 +158,9 @@ class Chunk(Base):
 
     向量存 SQLite JSON 列而非引入向量数据库：课程级规模（数千块）下
     内存余弦计算 < 50ms，自实现检索完全可解释（规模边界见开发文档 §8.2）。
+
+    owner 设计：document_id 指向课程资料（Document）或书库图书（Book），
+    二者共用 chunks 表（owner 字段区分）——解析与检索管线完全复用。
     """
 
     __tablename__ = "chunks"
@@ -163,15 +169,18 @@ class Chunk(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    document_id: Mapped[str] = mapped_column(ForeignKey("documents.id"), index=True)
+    # 归属：doc（课程资料）/ book（书库图书）
+    owner: Mapped[str] = mapped_column(Text, nullable=False, default="doc")
+    # owner=doc 时为 documents.id；owner=book 时为 books.id。
+    # 跨表共用一列，SQLite 无法对两表设 FK——完整性由业务层保证
+    # （Document ORM 级联删块；delete_book 手动清块）。
+    document_id: Mapped[str] = mapped_column(index=True)
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
     # 定位符值：页码/幻灯片号/章节名/行号——引用展示用（如"第 12 页"）
     locator_value: Mapped[str] = mapped_column(Text, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     embedding: Mapped[list | None] = mapped_column(JSON, default=None)
     token_count: Mapped[int] = mapped_column(Integer, default=0)
-
-    document: Mapped["Document"] = relationship(back_populates="chunks")
 
 
 # ---------------------------------------------------------------------------
@@ -225,8 +234,33 @@ class Message(Base):
 
 
 # ---------------------------------------------------------------------------
-# 讲解模式
+# 书库（全局共享：跨课程的电子图书，问答时勾选参与检索）
 # ---------------------------------------------------------------------------
+
+
+class Book(Base):
+    """书库条目：全局共享的大部头教材。
+
+    与课程资料（Document）的区别：Book 不挂在课程下，全局可用；
+    问答时通过 books 勾选参数并入检索范围（RRF 融合不分来源）。
+    解析管线与 Document 完全复用（chunks 表通用，document_id 指向 books）。
+    """
+
+    __tablename__ = "books"
+    __table_args__ = (Index("ix_books_status", "status"),)
+
+    id: Mapped[str] = mapped_column(primary_key=True)  # UUID
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    cover: Mapped[str | None] = mapped_column(Text, default=None)  # 像素风占位/封面 base64
+    filename: Mapped[str] = mapped_column(Text, nullable=False)
+    file_type: Mapped[str] = mapped_column(Text, nullable=False)
+    stored_path: Mapped[str] = mapped_column(Text, nullable=False)
+    locator_type: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="pending")
+    fail_reason: Mapped[str | None] = mapped_column(Text, default=None)
+    page_count: Mapped[int] = mapped_column(Integer, default=0)
+    chunk_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
 
 class Explain(Base):

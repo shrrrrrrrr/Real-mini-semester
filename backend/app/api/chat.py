@@ -36,7 +36,7 @@ from app.core import prompts
 from app.core.llm import LLMError, chat_stream
 from app.core.retrieval import build_course_index
 from app.db import get_db
-from app.models import ChatSession, Message
+from app.models import Book, ChatSession, Message
 
 router = APIRouter()
 
@@ -46,13 +46,14 @@ def _sse(event: dict) -> str:
 
 
 class ChatAskV2(BaseModel):
-    """提问请求 V2：支持分支（parent_message_id）与仅资料模式。"""
+    """提问请求 V2：支持分支（parent_message_id）、仅资料模式与书库勾选。"""
 
     course_id: str
     session_id: str | None = None
     question: str = Field(min_length=1, max_length=2000)
     parent_message_id: int | None = None  # 被追问的 assistant 消息（分支起点）
     docs_only: bool = False
+    book_ids: list[str] = Field(default_factory=list)  # 书库勾选（并入检索范围）
 
 
 def _branch_path_messages(db: Session, session_id: str, leaf_message_id: int | None) -> list[Message]:
@@ -129,8 +130,21 @@ async def chat_stream_endpoint(body: ChatAskV2, db: Session = Depends(get_db)):
         history_msgs = list(reversed(trunk))
 
     # ---- 检索阶段（本地，毫秒级）----
-    chunks = select_indexed_chunks(db, body.course_id)
-    index = build_course_index(chunks)
+    # 范围 = 课程勾选资料 + 书库勾选图书（RRF 融合不分来源）
+    chunks = list(select_indexed_chunks(db, body.course_id))
+    from app.api.documents import doc_names_map
+
+    names = doc_names_map(db, body.course_id)
+    if body.book_ids:
+        from app.api.books import load_book_chunks
+
+        book_chunks = load_book_chunks(db, body.book_ids)
+        # 书名并入引用名映射（引用展示《书名》）
+        titles = {b.id: b.title for b in db.query(Book).filter(Book.id.in_(body.book_ids)).all()}
+        names.update(titles)
+        index = build_course_index(chunks + list(book_chunks), doc_names=names)
+    else:
+        index = build_course_index(chunks, doc_names=names)
     retrieved = index.retrieve(body.question)
 
     # ---- 生成阶段 ----
