@@ -1,0 +1,42 @@
+{
+  "name": "hangyou-desktop",
+  "private": true,
+  "version": "1.0.0",
+  "description": "航友 Windows 桌面端",
+  "main": "main.cjs",
+  "scripts": {
+    "dist:win": "electron-builder --win nsis"
+  },
+  "build": {
+    "appId": "cn.buaa.hangyou",
+    "productName": "航友",
+    "directories": {
+      "output": "release/windows",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main.cjs",
+      "frontend-dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../../backend/dist/HangyouServer",
+        "to": "backend/HangyouServer"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/hangyou.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3"
+  }
+}

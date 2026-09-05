@@ -10,8 +10,32 @@ export interface ApiError {
   detail: string
 }
 
+const API_BASE_STORAGE_KEY = 'hangyou:api-base-url'
+
+/**
+ * 统一解析 API 地址：Web 默认同源 /api；桌面构建可注入回环地址；
+ * Android 使用用户在“我的”页保存的局域网服务地址。
+ */
+export function apiUrl(path: string): string {
+  const compileTimeBase = import.meta.env.VITE_API_BASE_URL?.trim()
+  const savedBase = typeof window === 'undefined' ? '' : localStorage.getItem(API_BASE_STORAGE_KEY)?.trim()
+  const base = savedBase || compileTimeBase || '/api'
+  const normalized = base.replace(/\/$/, '')
+  return `${normalized}${path.startsWith('/') ? path : `/${path}`}`
+}
+
+export function readApiBaseUrl(): string {
+  return typeof window === 'undefined' ? '' : localStorage.getItem(API_BASE_STORAGE_KEY) ?? ''
+}
+
+export function saveApiBaseUrl(value: string): void {
+  const normalized = value.trim().replace(/\/$/, '')
+  if (normalized) localStorage.setItem(API_BASE_STORAGE_KEY, normalized)
+  else localStorage.removeItem(API_BASE_STORAGE_KEY)
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const resp = await fetch(`/api${path}`, {
+  const resp = await fetch(apiUrl(path), {
     headers: { 'Content-Type': 'application/json' },
     ...init,
   })
@@ -94,7 +118,7 @@ export async function streamChat(
   handlers: StreamHandlers,
   signal?: AbortSignal,
 ): Promise<void> {
-  const resp = await fetch('/api/chat/stream', {
+  const resp = await fetch(apiUrl('/chat/stream'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

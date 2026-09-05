@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, errText } from '../lib/api'
+import { api, apiUrl, errText } from '../lib/api'
 import type { Course, DocumentInfo } from '../lib/types'
 import { useToast } from '../components/Toast'
 import { currentQuote, nextQuote, type Quote } from '../lib/quotes'
@@ -106,7 +106,7 @@ export function LibraryPage() {
         const form = new FormData()
         form.append('file', file)
         // 文件上传不走统一 JSON 封装，手动 fetch
-        const resp = await fetch(`/api/courses/${activeCourse}/documents`, {
+        const resp = await fetch(apiUrl(`/courses/${activeCourse}/documents`), {
           method: 'POST',
           body: form,
         })

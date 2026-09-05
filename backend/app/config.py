@@ -4,6 +4,7 @@
 LLM 通过 OpenAI 兼容协议访问云端 API（联网 + API Key）。
 """
 
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings
@@ -11,13 +12,17 @@ from pydantic_settings import BaseSettings
 # 仓库后端根目录（backend/）
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# 桌面安装包不能把学习记录写回只读的安装目录。打包启动器会传入
+# HANGYOU_DATA_DIR，将 SQLite 与原始资料放到用户可写的位置；Web 开发仍沿用 backend/data。
+RUNTIME_DATA_DIR = Path(os.environ.get("HANGYOU_DATA_DIR", str(BASE_DIR / "data"))).expanduser()
+
 
 class Settings(BaseSettings):
     # ---- 数据与存储 ----
     # SQLite 数据库文件路径：所有学习数据（课程/块/问答/测验/闪卡）的单文件主存储
-    db_path: Path = BASE_DIR / "data" / "zhiyuan.db"
+    db_path: Path = RUNTIME_DATA_DIR / "zhiyuan.db"
     # 上传的原始文件保存目录：保留原件，支持"重新索引"而无需重传
-    upload_dir: Path = BASE_DIR / "data" / "uploads"
+    upload_dir: Path = RUNTIME_DATA_DIR / "uploads"
 
     # ---- LLM（OpenAI 兼容协议，供应商可切换：DeepSeek / GLM / Qwen / OpenAI）----
     llm_base_url: str = "https://api.deepseek.com/v1"
@@ -38,7 +43,8 @@ class Settings(BaseSettings):
     # ---- 服务 ----
     host: str = "127.0.0.1"
     port: int = 8000
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    # Capacitor Android WebView 的来源通常为 http://localhost；保留开发端口以兼容 Web 调试。
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost,capacitor://localhost"
 
     class Config:
         env_file = BASE_DIR / ".env"

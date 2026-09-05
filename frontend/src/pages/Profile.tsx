@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { api, errText } from '../lib/api'
+import { api, errText, readApiBaseUrl, saveApiBaseUrl } from '../lib/api'
 import type { Course, Profile, Stats } from '../lib/types'
 import { useToast } from '../components/Toast'
 
@@ -39,6 +39,8 @@ export function ProfilePage() {
   const [model, setModel] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [testing, setTesting] = useState(false)
+  // 安卓端可保存同一 Wi-Fi 下 Windows 服务的地址；Web 留空即仍走 /api。
+  const [deviceApiBase, setDeviceApiBase] = useState(() => readApiBaseUrl())
   const [courses, setCourses] = useState<Course[]>([])
   const [courseId, setCourseId] = useState('')
   const [stats, setStats] = useState<Stats | null>(null)
@@ -224,6 +226,18 @@ export function ProfilePage() {
           <li><b>学习闭环</b>：测验错题转为闪卡，FSRS 到期信息、掌握度和考试日期共同生成复习计划。</li>
         </ol>
       </details>
+
+      {/* ---- 设备连接：仅移动端通常需要填写，地址保存在本机浏览器/应用内 ---- */}
+      <div className="panel reveal delay-3" style={{ padding: '22px', marginBottom: '18px' }}>
+        <b style={{ font: '700 7px/1 var(--mono)', color: 'var(--ink-strong)' }}>设备连接（安卓）</b>
+        <p style={{ color: 'var(--muted)', fontSize: 12, margin: '6px 0 14px' }}>
+          安卓和 Windows 连接同一 Wi-Fi 时，填写 Windows 服务地址，例如 http://192.168.1.8:8000/api。Web 版留空即可。
+        </p>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <input className="pixel-input" value={deviceApiBase} onChange={(event) => setDeviceApiBase(event.target.value)} placeholder="http://电脑局域网IP:8000/api" style={{ flex: 1, minWidth: 220, minHeight: 38 }} />
+          <button className="btn btn-primary" onClick={() => { saveApiBaseUrl(deviceApiBase); setDeviceApiBase(readApiBaseUrl()); toast(deviceApiBase.trim() ? '设备服务地址已保存' : '已恢复 Web 默认地址') }}>保存地址</button>
+        </div>
+      </div>
 
       {/* ---- 学习统计 ---- */}
       <div className="panel reveal delay-3" style={{ padding: '22px' }}>

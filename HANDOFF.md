@@ -130,3 +130,12 @@
 - 打开 http://localhost:5173 验收：①左上角校徽+航友 ②昼夜切换背景照片 ③今日签 ④书库上传（随便找个 PDF/EPUB 试）⑤问答页勾书提问 ⑥🌳 导图浮层 ⑦"就此追问"看横幅反馈。
 - 语录不满意 → 改 `frontend/src/lib/quotes.ts`。
 - 真实电子书资源就绪后上传书库测试。
+### 2026-09-05 — 第六轮：Windows 与 Android 安装工程
+
+- 继续工作前须先阅读根目录 `AGENTS.md`，本记录只说明当前状态。
+- **跨端策略**：暂不做云同步。Windows 桌面端承载 FastAPI、SQLite、资料原件和 AI 配置；Android 只封装界面，通过同一 Wi-Fi 访问 Windows 服务。Android 的“我的 → 设备连接（安卓）”填写 `http://电脑局域网IP:8000/api`，Web 留空继续使用默认 `/api`。
+- **Windows 工程**：新增 `backend/packaging/desktop_server.py`、`desktop/electron/`。Electron 启动时拉起 FastAPI 可执行文件，将数据放到当前用户可写目录，并以 `HOST=0.0.0.0`、`PORT=8000` 允许局域网 Android 访问。Windows 图标由北航校徽生成。
+- **后端打包验证**：PyInstaller 已生成 `backend/dist/HangyouServer/HangyouServer.exe`（构建产物被 Git 忽略）；发现并修复启动器环境变量名称问题。已使用该 exe 在 `127.0.0.1:8010` 成功返回 `/api/health`：`{"ok":true,"llm_configured":false}`。
+- **Android 工程**：在 `frontend/android/` 生成 Capacitor 工程，设置应用名“航友”、包名 `cn.buaa.hangyou`、北航校徽启动图标、网络权限与局域网 HTTP 访问；APK 已生成在 `frontend/android/app/build/outputs/apk/debug/app-debug.apk`（构建产物不入库）。本机 SDK 路径写入 `frontend/android/local.properties`，该文件已被 Git 忽略。
+- **Windows 安装器状态**：Electron 已完成 `win-unpacked` 应用目录封装，但 NSIS 安装器下载构建组件时被当前机器的 `self-signed certificate in certificate chain` 拦截。未关闭 TLS 校验绕过风险；网络证书恢复信任后，在 `desktop/electron/` 运行 `npm run dist:win` 即可补出安装程序。
+- **文档**：新增 `docs/INSTALLATION.md`，记录使用方式、Windows/Android 构建位置和局域网边界。

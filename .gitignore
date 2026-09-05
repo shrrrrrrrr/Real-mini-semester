@@ -20,3 +20,13 @@ dist/
 # IDE
 .idea/
 .vscode/
+# 桌面端与 Android 构建产物（源码和配置保留，安装包不入库）
+backend/build/
+backend/build-desktop/
+backend/dist/
+backend/*.spec
+desktop/electron/frontend-dist/
+desktop/electron/release/
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/android/local.properties

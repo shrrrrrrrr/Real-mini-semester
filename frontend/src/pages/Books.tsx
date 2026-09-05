@@ -4,7 +4,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, errText } from '../lib/api'
+import { api, apiUrl, errText } from '../lib/api'
 import type { Book } from '../lib/types'
 import { useToast } from '../components/Toast'
 
@@ -55,7 +55,7 @@ export function BooksPage() {
         form.append('file', file)
         // 书名默认取文件名去扩展名（与后端逻辑一致）；用户可在书库页随时编辑
         form.append('title', file.name.replace(/\.[^.]+$/, ''))
-        const resp = await fetch('/api/books', { method: 'POST', body: form })
+        const resp = await fetch(apiUrl('/books'), { method: 'POST', body: form })
         if (!resp.ok) {
           const body = await resp.json().catch(() => ({ detail: `上传失败（${resp.status}）` }))
           toast(`${file.name}：${body.detail}`, 'error')
