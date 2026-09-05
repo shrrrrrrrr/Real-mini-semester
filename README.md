@@ -1,65 +1,343 @@
-# 航友（Hangyou）
+# 航友 Hi!You! ✈️📚
 
-> 面向大学生的课程资料智能问答与复习系统 —— 把"看资料"变成"问资料、测自己、记得住"。
+> 面向北航以及所有大学生的课程资料智能问答与学习规划助手  
+> 把“看资料”变成“问资料、测自己、做练习\勤复习”
 
-## 它是什么
+北航学生在课程学习和期末复习中，往往会面对课件、讲义、实验指导书、电子教材等多种资料：内容多、时间紧、重点难梳理。**航友**围绕这一真实场景设计，**以学生上传的课程资料为可信知识源，提供问答、引用核对、测验、错题闪卡、复习计划和分支追问**等功能。
 
-把期末周看不完的课件 PDF / DOCX / PPTX / EPUB 拖进来：
+每天打开资料库时，航友还会送你一句学习寄语。希望每一次开始学习，都能收到一点轻松而真诚的鼓励。🌱
 
-1. **问资料**：像问学长一样提问。回答分两层——黄底部分出自你的资料（带页码引用，点击核对原文），灰底部分是模型通识补充（明确标注，不冒充资料）；
-2. **测自己**：从资料自动生成选择题测验，即时判分讲解析；
-3. **记得住**：答错的题一键转闪卡，FSRS 遗忘曲线算法在你快忘掉的那天让它重现。支持考试冲刺模式（按考试日期 + 每日预算重排队列，错题优先，考前二刷）。
+> 愿你今天的每一次提问，都离真正理解更近一点。
 
-本地优先：数据全部存在本机 SQLite，不上传任何云数据库；仅提问/出题时调用大模型 API。
+---
 
-## 技术栈
+## ✨ 核心特色
 
-- **前端**：React 19 + TypeScript + Vite + Tailwind CSS 4 + ts-fsrs（像素风格主题 + 昼夜切换）
-- **后端**：Python 3.12 + FastAPI + SQLAlchemy + SQLite
-- **检索**：BM25（rank-bm25）+ 向量（sentence-transformers MiniLM，本地 384 维）+ RRF 融合
-- **LLM**：OpenAI 兼容协议（DeepSeek / GLM / Qwen 可切换），Pydantic 结构化输出约束
+### 📖 课程资料优先的可信问答
 
-## 快速开始
+市面上那么多大模型，但是真正和自己学校课程百分百吻合的又有谁呢,老师的PPT、学长学姐的往年题，这些不传之秘才是应对学校课程的法宝!航友将基于你上传的资料作为最可信的蓝本,依据真实的课堂内容生成解答你的问题或者生成测试题.
 
-### 1. 启动后端（默认 :8000）
+上传 PDF、DOCX、PPTX、EPUB、TXT、MD 等课程资料后，你就可以拥有独属于这份课程的AI助教啦!回答分为两部分：
+
+- **资料依据**：来自已上传资料，带文件名、页码或章节定位；
+- **模型通识**：模型的补充说明，明确标注“不来自你的资料”。
+
+引用由后端根据真实检索片段生成，而不是由模型自行编造页码。点击引用即可查看原文片段和定位信息。你也可以选择"仅根据资料"模式，模型就会只从你上传的资料中摘取信息进行回答
+
+需要自行在"我的"中配置API,调用你的AI伙伴与你共同进步~
+
+### 📚 书库与课程资料共同检索
+
+除了课程资料，还可以向书库导入电子教材。
+
+- 支持上传 EPUB、PDF 等书籍，支持自行命名书籍；
+- 问答时可自主勾选是否让书库参与检索；
+- 引用会明确展示来自哪一本书。
+
+这使航友不仅能回答“老师课件里写了什么”，也能帮助学生结合教材进行更完整的理解。
+
+### 🌳 多分支提问与思维导图
+
+你是否还在为普通大模型一次只能就一个问题展开回答而苦恼？如果在一次交互后，你有多个想要问的方向，想要返回上一级问题重新提问，操作会变得非常复杂且不易管理。好友采用提问导图的模型，方便你快速定位到任意一次交互，用提问构建你的知识树！🥰
+
+一段回答结束后，可以点击“就此提问”，从当前对话创建新的追问分支。
+
+- 历史对话不会被删除；
+- 可以随时回到任意旧问题继续追问；
+- 导图按对话关系展示分支；
+- 支持上下、左右滚动查看较大的对话树；
+- 点击节点可快速跳转到对应对话。
+
+它更接近真实学习过程：先理解一个概念，再沿不同方向继续探索，而不是只能线性聊天。
+
+### 📝 从问答到测验
+
+航友不仅回答问题，还能基于课程资料生成选择题测验。
+
+- 测验仅基于已选资料生成；
+- 作答后即时判分并展示解析；
+- 错题可一键转为闪卡；
+- 测验、错题与后续复习共享同一套学习记录。
+
+### 🧠 闪卡与复习计划
+
+只看课件不做题，到头来脑袋空空？我们来给你出题啦！
+
+航友使用 FSRS 间隔重复算法辅助记忆，并提供三种复习方式：
+
+- **长期模式**：按遗忘规律安排复习；
+- **考试冲刺模式**：结合考试日期、每日时间预算、错题和稳定度生成计划；冲冲冲！
+- **手动计划模式**：根据自己的节奏安排每日复习量。
+
+复习计划会显示生成理由，例如“今日到期”“错题较多”“记忆稳定度较低”“距离考试较近”，让系统安排更贴心！
+
+### 🎨 北航风格界面
+
+- 北航蓝校徽与主题色；
+- 昼夜背景切换；
+- 像素化视觉风格；
+- 移动端适配；
+- 每日学习寄语；
+- 支持减少动态效果偏好。
+
+  BUAAers,come on!
+
+---
+
+## 🏗️ 系统架构
+
+![航友系统架构](docs/assets/hangyou-system-architecture.svg)
+
+```text
+React 前端
+    ↓ HTTP / SSE
+FastAPI 后端
+    ↓
+资料解析 → 语义分块 → MiniLM 向量检索 + BM25 → RRF 融合
+    ↓
+SQLite 本地数据 + 上传原件 + 引用片段
+    ↓
+OpenAI 兼容大模型 API
+```
+
+航友采用“本地优先”设计：
+
+- 课程、资料、书库、问答记录、测验记录和闪卡默认存储在本机；
+- 不需要注册账号即可使用；
+- 只有用户主动配置大模型接口后，问答、讲解和测验功能才会调用外部 AI 服务。
+
+---
+
+## 🛠️ 技术栈
+
+| 分类 | 技术 |
+|---|---|
+| 前端 | React 19、TypeScript、Vite、Tailwind CSS |
+| 后端 | Python 3.12、FastAPI、SQLAlchemy |
+| 数据存储 | SQLite |
+| 文档解析 | pypdf、python-docx、python-pptx、ebooklib |
+| 检索 | sentence-transformers MiniLM、BM25、RRF |
+| AI 接口 | OpenAI 兼容协议，可接入 DeepSeek、GLM、Qwen 等 |
+| 学习调度 | ts-fsrs |
+| 移动端 | Capacitor Android |
+| 部署 | Vercel 前端 + Hugging Face Spaces Docker 后端 |
+
+---
+
+## 🚀 本地运行
+
+### 1. 获取项目
+
+```bash
+git clone https://github.com/shrrrrrrrr/Real-mini-semester.git
+cd Real-mini-semester
+```
+
+### 2. 启动后端
 
 ```bash
 cd backend
-python -m venv venv && venv\Scripts\activate    # Windows
+
+python -m venv venv
+venv\Scripts\activate
+
 pip install -r requirements.txt
-# API 配置请在网页「我的 → AI 服务设置」填写；.env 不再作为运行时回退
 python run.py
 ```
 
-> 首次启动会自动下载嵌入模型（约 90MB，需联网/代理；此后离线可用）。
+后端默认运行在：
 
-### 2. 启动前端（默认 :5173）
+```text
+http://127.0.0.1:8000
+```
+
+首次启动时会下载 MiniLM 嵌入模型，约 90MB；后续可离线使用本地模型。
+
+### 3. 启动前端
+
+新开一个终端：
 
 ```bash
 cd frontend
+
 npm install
 npm run dev
 ```
 
-浏览器打开 http://localhost:5173；首次进行问答、测验或讲解前，请在「我的 → AI 服务设置」填写接口地址、模型名与 API Key。
+浏览器访问：
 
-## 项目结构
-
-```
-├── frontend/          # React 前端（资料库/问答/讲解/测验/复习/统计）
-├── backend/           # FastAPI 后端（解析/检索/LLM/复习计划/统计）
-│   ├── app/api/       # REST 接口层
-│   ├── app/core/      # parser 多格式解析 / chunker 分块 / retrieval 检索 / llm / prompts
-│   ├── tests/         # pytest 单元 + 接口测试（31 项）
-│   └── data/          # SQLite 库 + 上传原件（运行时生成）
-├── docs/              # 开发文档（含课程交付版）与调研
-├── AGENTS.md          # 协作规范
-└── HANDOFF.md         # 交接状态
+```text
+http://localhost:5173
 ```
 
-## 测试
+---
+
+## 🔑 配置 AI API
+
+航友不会默认调用任何历史 API Key。
+
+启动网页后，进入：
+
+```text
+我的 → AI 服务设置
+```
+
+填写以下内容：
+
+| 字段 | 示例 |
+|---|---|
+| 接口地址 | `https://api.deepseek.com/v1` |
+| 模型名 | `deepseek-chat` |
+| API Key | 你的供应商 API Key |
+
+然后点击：
+
+```text
+保存并测试连接
+```
+
+连接成功后，才可以使用问答、讲解、测验等 AI 功能。
+
+> 建议不要把 API Key 提交到 GitHub，也不要放入公开截图中。🔒
+
+---
+
+## ☁️ 在线部署
+
+航友的部署分为两部分：
+
+```text
+Vercel：部署 React 前端
+Hugging Face Spaces：部署 FastAPI 后端、检索模型和 SQLite 数据
+```
+
+### 后端部署到 Hugging Face Spaces
+
+1. 在 Hugging Face 创建一个新的 Space；
+2. SDK 选择 `Docker`；
+3. 上传 `backend/` 目录中的 Dockerfile、requirements.txt、run.py 和 `app/`；
+4. 在 Space 的 `Settings → Variables and secrets` 中配置：
+
+```text
+LLM_BASE_URL
+LLM_API_KEY
+LLM_MODEL
+EXTRA_CORS_ORIGINS
+```
+
+后端健康检查地址：
+
+```text
+https://你的 Space 地址/api/health
+```
+
+### 前端部署到 Vercel
+
+1. 在 Vercel 导入本 GitHub 仓库；
+2. Root Directory 设置为：
+
+```text
+frontend
+```
+
+3. 添加环境变量：
+
+```text
+VITE_API_BASE_URL=https://你的 Hugging Face Space 地址/api
+```
+
+4. 部署完成后，将 Vercel 域名填入 Hugging Face 的：
+
+```text
+EXTRA_CORS_ORIGINS
+```
+
+详细步骤见：[部署指南](docs/部署指南.md)。
+
+---
+
+## 📱 Android 版本  手机电脑齐头并进，随时开学!
+
+项目已生成 Android 调试包与 Capacitor 工程。
+
+当前 Android 端复用 Web 界面，需要与运行航友后端的 Windows 电脑处于同一 Wi-Fi。
+
+在 Android 应用中进入：
+
+```text
+我的 → 设备连接（安卓）
+```
+
+填写：
+
+```text
+http://电脑局域网IP:8000/api
+```
+
+例如：
+
+```text
+http://192.168.1.8:8000/api
+```
+
+---
+
+## 📂 项目结构
+
+```text
+Real-mini-semester/
+├── frontend/                    # React 前端
+│   ├── src/pages/               # 资料库、书库、问答、讲解、测验、复习、我的
+│   ├── src/components/          # 引用抽屉、答案渲染、分支导图等组件
+│   └── android/                 # Capacitor Android 工程
+├── backend/                     # FastAPI 后端
+│   ├── app/api/                 # 接口层
+│   ├── app/core/                # 解析、分块、检索、LLM、提示词
+│   ├── app/models.py            # SQLite 数据模型
+│   └── tests/                   # 接口与功能测试
+├── desktop/                     # Windows Electron 打包工程
+├── docs/                        # 开发文档、部署指南、架构图
+├── AGENTS.md                    # 协作规范
+└── HANDOFF.md                   # 项目交接记录
+```
+
+---
+
+## 🧪 验证
 
 ```bash
-cd backend && python -m pytest tests -q   # 31 项测试
-cd frontend && npm run build              # 类型检查 + 构建
+# 后端测试
+cd backend
+python -m pytest tests -q
+
+# 前端构建
+cd frontend
+npm run build
 ```
+
+已完成的验证包括：
+
+- 资料上传、解析和索引；
+- 双层问答与引用跳转；
+- 多轮追问与分支导图；
+- 书库检索范围控制；
+- 讲解、测验、错题转闪卡；
+- FSRS 复习与计划理由；
+- Android 调试 APK 构建；
+- Windows 后端可执行文件健康检查。
+
+---
+
+## 🌱 项目理念
+
+航友不希望把学习变成“再多问一次 AI”。
+
+它更关注几个朴素的问题：
+
+- 这段回答到底来自哪里？
+- 学生是否真的理解了？
+- 做错的内容以后还会不会再忘？
+- 临近考试时，今天到底该先复习什么？
+- 学习很累的时候，能不能有人提醒一句：慢一点也没关系，继续往前就好。
+
+愿每一位北航同学，都能在充实的课程学习中成为更好的自己✈️航友，伴你同行！
